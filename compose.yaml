@@ -1,0 +1,15 @@
+services:
+  db:
+    image: postgres:18
+    container_name: entornos-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_PASSWORD: example
+      POSTGRES_DB: entornos-db
+    volumes:
+      - db-data:/var/lib/postgresql
+    ports:
+      - "5433:5432"
+
+volumes:
+  db-data:
