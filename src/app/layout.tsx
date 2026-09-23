@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Montserrat, Open_Sans } from "next/font/google";
+import { Sidebar } from "../app/layout/Sidebar";
 import "./globals.css";
 
 const montserrat = Montserrat({
@@ -15,8 +16,8 @@ const openSans = Open_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Sistema de registro a cursos del laboratorio",
-  description: "Proyecto para la materia de EVA 2-2026",
+  title: "Laboratorios Sistemas Informatica UMSS",
+  description: "Plataforma de formación continua",
 };
 
 export default function RootLayout({
@@ -26,8 +27,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es" className={`${montserrat.variable} ${openSans.variable}`}>
-      <body className="font-secondary text-text-main bg-white antialiased">
-        {children}
+      <body className="font-secondary text-text-main bg-card-bg antialiased flex min-h-screen w-full">
+        
+        <Sidebar />
+        <div className="flex-1 flex flex-col min-w-0 w-full">
+          {children}
+        </div>
+
       </body>
     </html>
   );
