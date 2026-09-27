@@ -1,8 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
   provider = "prisma-client"
   output   = "../generated/prisma"
@@ -10,4 +5,161 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+}
+
+model Usuario {
+  ci           String       @id @db.VarChar(10)
+  nombres      String       @db.VarChar(80)
+  apellidos    String       @db.VarChar(80)
+  email        String       @unique @db.VarChar(120)
+  passwordHash String       @map("password_hash") @db.VarChar(255)
+  estudiante   Estudiante?
+  instructor   Instructor?
+  roles        UsuarioRol[]
+
+  @@map("usuario")
+}
+
+model Rol {
+  id       Int          @id @default(autoincrement())
+  nombre   String       @unique @db.VarChar(50)
+  usuarios UsuarioRol[]
+
+  @@map("rol")
+}
+
+model UsuarioRol {
+  ci      String  @db.VarChar(10)
+  idRol   Int     @map("id_rol")
+  usuario Usuario @relation(fields: [ci], references: [ci], onDelete: Cascade)
+  rol     Rol     @relation(fields: [idRol], references: [id], onDelete: Cascade)
+
+  @@id([ci, idRol])
+  @@index([idRol])
+  @@map("usuario_rol")
+}
+
+model Estudiante {
+  ci            String        @id @db.VarChar(10)
+  codigoSis     String        @unique @map("codigo_sis") @db.VarChar(20)
+  celular       String        @db.VarChar(20)
+  usuario       Usuario       @relation(fields: [ci], references: [ci], onDelete: Cascade)
+  inscripciones Inscripcion[]
+  asistencias   Asistencia[]
+  certificados  Certificado[]
+
+  @@map("estudiante")
+}
+
+model Instructor {
+  ci           String  @id @db.VarChar(10)
+  especialidad String  @db.VarChar(120)
+  usuario      Usuario @relation(fields: [ci], references: [ci], onDelete: Cascade)
+  cursos       Curso[]
+
+  @@map("instructor")
+}
+
+model Curso {
+  codigo        String        @id @db.VarChar(20)
+  ciInstructor  String        @map("ci_instructor") @db.VarChar(10)
+  nombre        String        @db.VarChar(150)
+  grupo         String        @db.VarChar(10)
+  nivel         String        @db.VarChar(50)
+  costo         Decimal       @db.Decimal(10, 2)
+  moneda        String        @default("BOB") @db.VarChar(3)
+  fechaIni      DateTime      @map("fecha_ini") @db.Date
+  fechaFin      DateTime      @map("fecha_fin") @db.Date
+  duracionHoras Int           @map("duracion_horas")
+  numInscritos  Int           @default(0) @map("num_inscritos")
+  instructor    Instructor    @relation(fields: [ciInstructor], references: [ci])
+  inscripciones Inscripcion[]
+  sesiones      Sesion[]
+  certificados  Certificado[]
+
+  @@index([ciInstructor])
+  @@index([fechaIni])
+  @@map("curso")
+}
+
+model Ambiente {
+  id        Int      @id @default(autoincrement())
+  nombre    String   @db.VarChar(100)
+  capacidad Int
+  sesiones  Sesion[]
+
+  @@map("ambiente")
+}
+
+model Sesion {
+  id          Int          @id @default(autoincrement())
+  codigoCurso String       @map("codigo_curso") @db.VarChar(20)
+  idAmbiente  Int          @map("id_ambiente")
+  fecha       DateTime     @db.Date
+  horaInicio  DateTime     @map("hora_inicio") @db.Time
+  horaFin     DateTime     @map("hora_fin") @db.Time
+  curso       Curso        @relation(fields: [codigoCurso], references: [codigo], onDelete: Cascade)
+  ambiente    Ambiente     @relation(fields: [idAmbiente], references: [id])
+  asistencias Asistencia[]
+
+  @@index([codigoCurso, fecha])
+  @@index([idAmbiente])
+  @@map("sesion")
+}
+
+model Inscripcion {
+  id               Int        @id @default(autoincrement())
+  ciEstudiante     String     @map("ci_estudiante") @db.VarChar(10)
+  codigoCurso      String     @map("codigo_curso") @db.VarChar(20)
+  tipoPrecio       String     @map("tipo_precio") @db.VarChar(30)
+  fotocopiaCi      Boolean    @default(false) @map("fotocopia_ci")
+  fechaInscripcion DateTime   @default(now()) @map("fecha_inscripcion") @db.Date
+  estudiante       Estudiante @relation(fields: [ciEstudiante], references: [ci], onDelete: Cascade)
+  curso            Curso      @relation(fields: [codigoCurso], references: [codigo], onDelete: Cascade)
+  pago             Pago?
+
+  @@unique([ciEstudiante, codigoCurso])
+  @@index([codigoCurso])
+  @@index([ciEstudiante])
+  @@map("inscripcion")
+}
+
+model Pago {
+  id            Int         @id @default(autoincrement())
+  idInscripcion Int         @unique @map("id_inscripcion")
+  montoFisico   Decimal     @default(0) @map("monto_fisico") @db.Decimal(10, 2)
+  montoQr       Decimal     @default(0) @map("monto_qr") @db.Decimal(10, 2)
+  fechaPago     DateTime    @default(now()) @map("fecha_pago") @db.Date
+  inscripcion   Inscripcion @relation(fields: [idInscripcion], references: [id], onDelete: Cascade)
+
+  @@map("pago")
+}
+
+model Asistencia {
+  id           Int        @id @default(autoincrement())
+  idSesion     Int        @map("id_sesion")
+  ciEstudiante String     @map("ci_estudiante") @db.VarChar(10)
+  presente     Boolean    @default(false)
+  sesion       Sesion     @relation(fields: [idSesion], references: [id], onDelete: Cascade)
+  estudiante   Estudiante @relation(fields: [ciEstudiante], references: [ci], onDelete: Cascade)
+
+  @@unique([idSesion, ciEstudiante])
+  @@index([ciEstudiante])
+  @@map("asistencia")
+}
+
+model Certificado {
+  codigo        String     @id @db.VarChar(30)
+  ciEstudiante  String     @map("ci_estudiante") @db.VarChar(10)
+  codigoCurso   String     @map("codigo_curso") @db.VarChar(20)
+  fechaEmision  DateTime   @map("fecha_emision") @db.Date
+  tipo          String     @db.VarChar(50)
+  notaFinal     Decimal?   @map("nota_final") @db.Decimal(5, 2)
+  pctAsistencia Decimal?   @map("pct_asistencia") @db.Decimal(5, 2)
+  estudiante    Estudiante @relation(fields: [ciEstudiante], references: [ci], onDelete: Cascade)
+  curso         Curso      @relation(fields: [codigoCurso], references: [codigo], onDelete: Cascade)
+
+  @@unique([ciEstudiante, codigoCurso])
+  @@index([codigoCurso])
+  @@map("certificado")
 }
