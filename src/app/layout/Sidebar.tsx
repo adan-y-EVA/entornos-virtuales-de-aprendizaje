@@ -2,15 +2,24 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { 
   BookOpen, Users, Award, Calendar, 
   CheckCircle, LogOut 
 } from 'lucide-react';
+import { useAuth } from '@/src/context/AuthContext';
 
 export function Sidebar() {
   // hook de Next.js para saber en qué URL estamos actualmente
   const pathname = usePathname();
+  const router = useRouter();
+  const { user, logout } = useAuth();
+
+  const handleLogout = async () => {
+    await logout();
+    router.replace('/login');
+    router.refresh();
+  };
 
   // Lista de rutas para renderizarlas dinámicamente
   const menuItems = [
@@ -53,8 +62,17 @@ export function Sidebar() {
       </nav>
 
       {/* Botón de Cerrar Sesión fijo abajo */}
-      <div className="p-4 border-t border-[#1a5b9c]">
-        <button className="w-full flex items-center space-x-3 px-4 py-2 hover:bg-[#1a5b9c] rounded-lg transition-colors font-secondary text-gray-100">
+      <div className="p-4 border-t border-[#1a5b9c] space-y-3">
+        {user && (
+          <div className="px-4 font-secondary">
+            <p className="text-sm font-bold text-white truncate">{user.nombre}</p>
+            <p className="text-xs text-gray-300">{user.email}</p>
+          </div>
+        )}
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center space-x-3 px-4 py-2 hover:bg-[#1a5b9c] rounded-lg transition-colors font-secondary text-gray-100"
+        >
           <LogOut size={20} />
           <span>Cerrar Sesión</span>
         </button>
