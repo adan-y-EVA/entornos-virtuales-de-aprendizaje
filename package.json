@@ -21,14 +21,19 @@
     "db:setup": "pnpm db:up && pnpm db:migrate && pnpm db:generate && pnpm db:seed"
   },
   "dependencies": {
+    "@hookform/resolvers": "^5.9.1",
     "@prisma/adapter-pg": "^7.10.0",
     "@prisma/client": "7.10.0",
     "dotenv": "^17.4.2",
+    "jose": "^6.2.12",
     "lucide-react": "^1.47.0",
     "next": "16.3.5",
     "pg": "^8.23.0",
     "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "react-dom": "19.2.8",
+    "react-hook-form": "^7.89.0",
+    "server-only": "^0.0.1",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -42,6 +47,5 @@
     "tailwindcss": "^4",
     "tsx": "^4.23.15",
     "typescript": "^5"
-  },
-  "packageManager": "pnpm@11.25.0"
+  }
 }
