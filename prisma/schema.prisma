@@ -149,15 +149,16 @@ model Asistencia {
 }
 
 model Certificado {
-  codigo        String     @id @db.VarChar(30)
-  ciEstudiante  String     @map("ci_estudiante") @db.VarChar(10)
-  codigoCurso   String     @map("codigo_curso") @db.VarChar(20)
-  fechaEmision  DateTime   @map("fecha_emision") @db.Date
-  tipo          String     @db.VarChar(50)
-  notaFinal     Decimal?   @map("nota_final") @db.Decimal(5, 2)
-  pctAsistencia Decimal?   @map("pct_asistencia") @db.Decimal(5, 2)
-  estudiante    Estudiante @relation(fields: [ciEstudiante], references: [ci], onDelete: Cascade)
-  curso         Curso      @relation(fields: [codigoCurso], references: [codigo], onDelete: Cascade)
+  id                 Int        @id @default(autoincrement())
+  codigoVerificacion String     @unique @map("codigo_verificacion") @db.VarChar(30)
+  ciEstudiante       String     @map("ci_estudiante") @db.VarChar(10)
+  codigoCurso        String     @map("codigo_curso") @db.VarChar(20)
+  fechaEmision       DateTime   @map("fecha_emision") @db.Date
+  tipo               String     @db.VarChar(50)
+  notaFinal          Decimal?   @map("nota_final") @db.Decimal(5, 2)
+  pctAsistencia      Decimal?   @map("pct_asistencia") @db.Decimal(5, 2)
+  estudiante         Estudiante @relation(fields: [ciEstudiante], references: [ci], onDelete: Cascade)
+  curso              Curso      @relation(fields: [codigoCurso], references: [codigo], onDelete: Cascade)
 
   @@unique([ciEstudiante, codigoCurso])
   @@index([codigoCurso])

@@ -184,7 +184,7 @@ const indexesAsistencia = [1, 2, 3, 4, 5, 7, 8, 9, 10, 12];
 
 const certificados = [
   {
-    codigo: "CERT-2025-0001",
+    codigoVerificacion: "CERT-2025-0001",
     estudiante: 0,
     curso: 3,
     fechaEmision: "2025-12-19",
@@ -193,7 +193,7 @@ const certificados = [
     pctAsistencia: "100.00",
   },
   {
-    codigo: "CERT-2025-0002",
+    codigoVerificacion: "CERT-2025-0002",
     estudiante: 2,
     curso: 3,
     fechaEmision: "2025-12-19",
@@ -202,7 +202,7 @@ const certificados = [
     pctAsistencia: "80.00",
   },
   {
-    codigo: "CERT-2025-0003",
+    codigoVerificacion: "CERT-2025-0003",
     estudiante: 4,
     curso: 3,
     fechaEmision: "2025-12-19",
@@ -371,7 +371,7 @@ async function main() {
   for (const certificado of certificados) {
     await prisma.certificado.create({
       data: {
-        codigo: certificado.codigo,
+        codigoVerificacion: certificado.codigoVerificacion,
         ciEstudiante: estudiantes[certificado.estudiante].ci,
         codigoCurso: cursos[certificado.curso].codigo,
         fechaEmision: soloFecha(certificado.fechaEmision),

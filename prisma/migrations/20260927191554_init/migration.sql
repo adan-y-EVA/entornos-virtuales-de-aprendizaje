@@ -1,3 +1,6 @@
+-- CreateSchema
+CREATE SCHEMA IF NOT EXISTS "public";
+
 -- CreateTable
 CREATE TABLE "usuario" (
     "ci" VARCHAR(10) NOT NULL,
@@ -115,7 +118,8 @@ CREATE TABLE "asistencia" (
 
 -- CreateTable
 CREATE TABLE "certificado" (
-    "codigo" VARCHAR(30) NOT NULL,
+    "id" SERIAL NOT NULL,
+    "codigo_verificacion" VARCHAR(30) NOT NULL,
     "ci_estudiante" VARCHAR(10) NOT NULL,
     "codigo_curso" VARCHAR(20) NOT NULL,
     "fecha_emision" DATE NOT NULL,
@@ -123,7 +127,7 @@ CREATE TABLE "certificado" (
     "nota_final" DECIMAL(5,2),
     "pct_asistencia" DECIMAL(5,2),
 
-    CONSTRAINT "certificado_pkey" PRIMARY KEY ("codigo")
+    CONSTRAINT "certificado_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateIndex
@@ -167,6 +171,9 @@ CREATE INDEX "asistencia_ci_estudiante_idx" ON "asistencia"("ci_estudiante");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "asistencia_id_sesion_ci_estudiante_key" ON "asistencia"("id_sesion", "ci_estudiante");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "certificado_codigo_verificacion_key" ON "certificado"("codigo_verificacion");
 
 -- CreateIndex
 CREATE INDEX "certificado_codigo_curso_idx" ON "certificado"("codigo_curso");
@@ -215,3 +222,4 @@ ALTER TABLE "certificado" ADD CONSTRAINT "certificado_ci_estudiante_fkey" FOREIG
 
 -- AddForeignKey
 ALTER TABLE "certificado" ADD CONSTRAINT "certificado_codigo_curso_fkey" FOREIGN KEY ("codigo_curso") REFERENCES "curso"("codigo") ON DELETE CASCADE ON UPDATE CASCADE;
+
