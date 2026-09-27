@@ -1,5 +1,40 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Variables de entorno
+
+`SESSION_SECRET` es obligatoria: firma y verifica los JWT de sesion (`src/lib/auth.ts` la lee al importar). Si no existe, la app revienta al arrancar.
+
+```bash
+echo "SESSION_SECRET=$(openssl rand -base64 32)" >> .env
+```
+
+La sesion dura 7 dias y se guarda en una cookie `httpOnly` (ver `src/proxy.ts`).
+
+## Autenticacion y RBAC
+
+| Archivo | Rol |
+| --- | --- |
+| `src/app/api/auth/login/route.ts` | valida credenciales (scrypt) y emite el JWT |
+| `src/app/api/auth/logout/route.ts` | borra la cookie |
+| `src/app/api/auth/me/route.ts` | devuelve el usuario de la sesion (401 si no hay) |
+| `src/proxy.ts` | control de acceso por rol. **Next.js 16 renombro `middleware.ts` a `proxy.ts`** |
+| `src/lib/auth.ts` | JWT, hash/verificacion de contrasena, helpers de cookie |
+| `src/context/AuthContext.tsx` | estado de sesion en el cliente |
+| `src/app/login/page.tsx` | formulario de login |
+
+Rutas protegidas (definidas en `src/proxy.ts`):
+
+| Ruta | Roles |
+| --- | --- |
+| `/` | ADMIN, INSTRUCTOR |
+| `/dashboard/estudiante` | ESTUDIANTE |
+| `/cursos`, `/asistencia`, `/certificados` | ADMIN, INSTRUCTOR |
+| `/inscripciones` | ADMIN |
+
+Sin sesion: las paginas redirigen a `/login` y las API responden `401`. Con un rol que no corresponde: la pagina redirige al panel del rol y la API responde `403`. Las mismas reglas de rol aplican a los equivalentes `/api/<ruta>`.
+
+Usuarios de prueba (contrasena `123456`): `rmamani@umss.edu.bo` (admin), `mquispe@umss.edu.bo` (instructor), `aflores@student.umss.edu.bo` (estudiante).
+
 ## Base de datos
 
 Postgres 18 corriendo en Docker: base `entornos-db`, usuario `postgres`, password `example`, puerto `5433` (ver `compose.yaml` y `.env`).

@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Montserrat, Open_Sans } from "next/font/google";
-import { Sidebar } from "../app/layout/Sidebar";
+import { AuthProvider } from "../context/AuthContext";
+import { AppShell } from "./layout/AppShell";
+import { verifySession } from "../lib/auth";
 import "./globals.css";
 
 const montserrat = Montserrat({
@@ -20,20 +22,28 @@ export const metadata: Metadata = {
   description: "Plataforma de formación continua",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const session = await verifySession();
+
+  const initialUser = session
+    ? {
+        ci: session.sub,
+        email: session.email,
+        role: session.role,
+        nombre: session.nombre,
+      }
+    : null;
+
   return (
     <html lang="es" className={`${montserrat.variable} ${openSans.variable}`}>
       <body className="font-secondary text-text-main bg-card-bg antialiased flex min-h-screen w-full">
-        
-        <Sidebar />
-        <div className="flex-1 flex flex-col min-w-0 w-full">
-          {children}
-        </div>
-
+        <AuthProvider initialUser={initialUser}>
+          <AppShell>{children}</AppShell>
+        </AuthProvider>
       </body>
     </html>
   );
