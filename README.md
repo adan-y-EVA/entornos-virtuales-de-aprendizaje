@@ -1,5 +1,50 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Base de datos
+
+Postgres 18 corriendo en Docker: base `entornos-db`, usuario `postgres`, password `example`, puerto `5433` (ver `compose.yaml` y `.env`).
+
+### Puesta en marcha
+
+```bash
+pnpm install
+pnpm db:up
+```
+
+`pnpm db:up` levanta el contenedor y no hay que correr migraciones ni seed a mano. Postgres ejecuta los scripts de `/docker-entrypoint-initdb.d` la unica vez que se crea el volumen, asi que en ese primer arranque quedan:
+
+1. `prisma/migrations/20260927191554_init/migration.sql` montado como `01_schema.sql`: crea las 13 tablas.
+2. `prisma/docker/02_seed.sql`: carga los datos de prueba.
+3. `prisma/docker/03_prisma_migrations.sql`: registra la migracion en el historial de Prisma, para que `pnpm db:migrate` no detecte drift.
+
+Si ya tenias el volumen creado antes de que existieran esos scripts, usa `pnpm db:fresh` para borrarlo y que se vuelvan a ejecutar.
+
+### Comandos
+
+| Comando | Que hace |
+| --- | --- |
+| `pnpm db:up` | Levanta el Postgres de `compose.yaml` |
+| `pnpm db:down` | Apaga el contenedor, conservando el volumen |
+| `pnpm db:fresh` | Borra el volumen y lo recrea: vuelve a ejecutar los scripts de arranque (se pierden los datos) |
+| `pnpm db:migrate` | Crea y aplica una migracion segun los cambios en `schema.prisma` (pide confirmacion) |
+| `pnpm db:generate` | Regenera el cliente de Prisma en `generated/prisma` |
+| `pnpm db:seed` | Recarga los datos de prueba de `prisma/seed.ts`, borrando lo que haya |
+| `pnpm db:studio` | Abre Prisma Studio para explorar la base |
+| `pnpm db:reset` | Borra todas las tablas y reaplica las migraciones (destructivo) |
+| `pnpm db:setup` | Atajo: `db:up` + `db:migrate` + `db:generate` + `db:seed` |
+| `pnpm typecheck` | `tsc --noEmit` |
+
+`postinstall` corre `prisma generate`, asi que el cliente siempre esta disponible despues de `pnpm install`.
+
+### Regenerar los datos de prueba en SQL
+
+`prisma/docker/02_seed.sql` es un `pg_dump` de la base ya sembrada. Despues de cambiar `prisma/seed.ts`:
+
+```bash
+pnpm db:seed
+docker exec entornos-postgres pg_dump -U postgres -d entornos-db --data-only --schema=public --exclude-table=_prisma_migrations --column-inserts --no-owner --no-privileges
+```
+
 ## Getting Started
 
 First, run the development server:

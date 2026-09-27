@@ -8,8 +8,20 @@ services:
       POSTGRES_DB: entornos-db
     volumes:
       - db-data:/var/lib/postgresql
+      # Postgres ejecuta los scripts de /docker-entrypoint-initdb.d solo cuando
+      # el volumen esta vacio, es decir, una unica vez por maquina. En ese
+      # arranque se crea el esquema, se cargan los datos de prueba y se registra
+      # la migracion en el historial de Prisma.
+      - ./prisma/migrations/20260927191554_init/migration.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
+      - ./prisma/docker/02_seed.sql:/docker-entrypoint-initdb.d/02_seed.sql:ro
+      - ./prisma/docker/03_prisma_migrations.sql:/docker-entrypoint-initdb.d/03_prisma_migrations.sql:ro
     ports:
       - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d entornos-db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
 volumes:
   db-data:
