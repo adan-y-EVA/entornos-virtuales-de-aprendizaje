@@ -76,6 +76,7 @@ model Curso {
   inscripciones Inscripcion[]
   sesiones      Sesion[]
   certificados  Certificado[]
+  estado        String        @default("activo") @db.VarChar(20)
 
   @@index([ciInstructor])
   @@index([fechaIni])
