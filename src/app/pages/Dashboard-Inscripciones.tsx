@@ -161,7 +161,7 @@ export default function DashboardInscripciones({
         </Button>
       </header>
 
-      <main className="p-6 flex-1 w-full overflow-x-hidden space-y-8"> 
+      <main className="p-6 flex-1 w-full mx-auto max-w-6xl overflow-x-hidden space-y-8"> 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8 w-full">
           <StatCard
             title="Cursos abiertos"
@@ -179,7 +179,7 @@ export default function DashboardInscripciones({
           />
         </div>
 
-        <div className="bg-card-bg border border-card-border rounded-xl p-4 mb-8">
+        <div className="bg-card-bg border border-card-border rounded-xl p-4 mb-8 max-w-2xl">
           <label htmlFor="curso" className={labelClases}>
             Curso a inscribir
           </label>
