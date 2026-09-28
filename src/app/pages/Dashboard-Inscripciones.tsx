@@ -6,6 +6,7 @@ import { AlertCircle, CheckCircle, Download, FileSpreadsheet, Upload, UserPlus }
 import { Badge } from '../components/Badge';
 import { Button } from '../components/Button';
 import { StatCard } from '../components/StatCard';
+import { TablaReporteInscripciones, type FilaReporte } from '../components/register/RegisterReportTable';
 
 export interface CursoOption {
   codigo: string;
@@ -20,22 +21,7 @@ export interface CursoOption {
 
 export interface ResumenInscripciones {
   cursosAbiertos: number;
-  inscritosHoy: number;
   totalInscritos: number;
-}
-
-interface ErrorFila {
-  columna: string;
-  mensaje: string;
-}
-
-interface FilaReporte {
-  fila: number;
-  ciEstudiante: string;
-  nombres: string;
-  apellidos: string;
-  estado: 'OK' | 'ERROR';
-  errores: ErrorFila[];
 }
 
 interface ResultadoCarga {
@@ -48,7 +34,7 @@ interface DashboardInscripcionesProps {
   resumen: ResumenInscripciones;
 }
 
-const tiposPrecio = ['ORIGINAL', 'BENEFICIARIO'];
+const tiposPrecio = ['NORMAL', 'ESTUDIANTE', 'AUXILIAR'];
 
 const inputClases =
   'w-full px-3 py-2 border border-input-border rounded-lg text-sm bg-white text-text-main focus:outline-none';
@@ -60,7 +46,9 @@ export default function DashboardInscripciones({
   resumen,
 }: DashboardInscripcionesProps) {
   const router = useRouter();
-  const [codigoCurso, setCodigoCurso] = useState(cursos[0]?.codigo ?? '');
+  const [codigoCurso, setCodigoCurso] = useState(
+    cursos.find((item) => item.abiertos)?.codigo ?? cursos[0]?.codigo ?? '',
+  );
 
   const [enviando, setEnviando] = useState(false);
   const [errorManual, setErrorManual] = useState<string | null>(null);
@@ -73,6 +61,7 @@ export default function DashboardInscripciones({
 
   const curso = cursos.find((item) => item.codigo === codigoCurso);
   const cargaHabilitada = Boolean(curso?.abiertos);
+  const archivoListo = nombreArchivo.length > 0;
 
   async function registrarEstudiante(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault();
@@ -172,21 +161,14 @@ export default function DashboardInscripciones({
         </Button>
       </header>
 
-      <main className="p-6 flex-1 w-full overflow-x-hidden space-y-8">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <main className="p-6 flex-1 w-full overflow-x-hidden space-y-8"> 
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8 w-full">
           <StatCard
             title="Cursos abiertos"
             value={resumen.cursosAbiertos}
             icon={<UserPlus />}
             iconBgClass="bg-blue-100"
             iconTextClass="text-primary"
-          />
-          <StatCard
-            title="Inscripciones de hoy"
-            value={resumen.inscritosHoy}
-            icon={<CheckCircle />}
-            iconBgClass="bg-green-100"
-            iconTextClass="text-green-700"
           />
           <StatCard
             title="Total inscritos"
@@ -197,9 +179,9 @@ export default function DashboardInscripciones({
           />
         </div>
 
-        <div className="bg-card-bg border border-card-border rounded-xl p-4">
+        <div className="bg-card-bg border border-card-border rounded-xl p-4 mb-8">
           <label htmlFor="curso" className={labelClases}>
-            Curso de destino
+            Curso a inscribir
           </label>
           <select
             id="curso"
@@ -238,7 +220,7 @@ export default function DashboardInscripciones({
             </p>
 
             <form onSubmit={registrarEstudiante} className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-6">
                 <div>
                   <label htmlFor="ciEstudiante" className={labelClases}>
                     CI *
@@ -309,6 +291,13 @@ export default function DashboardInscripciones({
                 </p>
               )}
 
+              {!cargaHabilitada && (
+                <p className="text-xs text-text-muted">
+                  La inscripción a <span className="font-semibold">{codigoCurso}</span> está cerrada: la
+                  fecha de inicio ya pasó. Elige otro curso para inscribir.
+                </p>
+              )}
+
               <Button
                 type="submit"
                 icon={<UserPlus size={18} />}
@@ -332,7 +321,7 @@ export default function DashboardInscripciones({
 
             <form onSubmit={cargarArchivo} className="space-y-4">
               <div>
-                <label htmlFor="archivo" className={labelClases}>
+                <label htmlFor="archivo" className={labelClases} >
                   Archivo de estudiantes
                 </label>
                 <input
@@ -355,14 +344,29 @@ export default function DashboardInscripciones({
                 </p>
               )}
 
-              <Button type="submit" icon={<Upload size={18} />} disabled={subiendo || !cargaHabilitada}>
+              {!cargaHabilitada ? (
+                <p className="text-xs text-text-muted">
+                  La inscripción a <span className="font-semibold">{codigoCurso}</span> está cerrada: la
+                  fecha de inicio ya pasó. Elige otro curso para habilitar la carga.
+                </p>
+              ) : !archivoListo ? (
+                <p className="text-xs text-text-muted">
+                  Selecciona un archivo .csv o .xlsx para habilitar el botón.
+                </p>
+              ) : null}
+
+              <Button
+                type="submit"
+                icon={<Upload size={18} />}
+                disabled={subiendo || !cargaHabilitada || !archivoListo}
+              >
                 {subiendo ? 'Procesando...' : 'Cargar archivo'}
               </Button>
             </form>
 
             {resultado && (
-              <div className="mt-6 space-y-3">
-                <div className="flex flex-wrap gap-2 text-sm">
+              <div className="mt-6 space-y-8">
+                <div className="flex flex-wrap gap-4 text-sm">
                   <Badge variant="default">Filas: {resultado.resumen.total}</Badge>
                   <Badge variant="success">Procesadas: {resultado.resumen.exitosos}</Badge>
                   <Badge variant={resultado.resumen.fallidos > 0 ? 'error' : 'default'}>
@@ -370,47 +374,7 @@ export default function DashboardInscripciones({
                   </Badge>
                 </div>
 
-                <div className="border border-card-border rounded-lg overflow-x-auto max-h-96">
-                  <table className="w-full text-left text-sm">
-                    <thead className="bg-card-bg text-text-muted font-secondary border-b border-card-border">
-                      <tr>
-                        <th className="p-3">Fila</th>
-                        <th className="p-3">CI</th>
-                        <th className="p-3">Estudiante</th>
-                        <th className="p-3">Estado</th>
-                        <th className="p-3">Detalle</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {resultado.filas.map((fila) => (
-                        <tr key={fila.fila} className="border-b border-card-border align-top">
-                          <td className="p-3 font-mono text-xs text-text-muted">{fila.fila}</td>
-                          <td className="p-3 font-mono text-xs text-text-main">{fila.ciEstudiante}</td>
-                          <td className="p-3 text-text-main">
-                            {fila.nombres} {fila.apellidos}
-                          </td>
-                          <td className="p-3">
-                            {fila.estado === 'OK' ? (
-                              <Badge variant="success">Inscrito</Badge>
-                            ) : (
-                              <Badge variant="error">Error</Badge>
-                            )}
-                          </td>
-                          <td className="p-3 text-xs text-secondary">
-                            {fila.errores.length === 0
-                              ? '—'
-                              : fila.errores.map((error) => (
-                                  <p key={`${fila.fila}-${error.columna}`}>
-                                    <span className="font-mono font-semibold">{error.columna}:</span>{' '}
-                                    {error.mensaje}
-                                  </p>
-                                ))}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                <TablaReporteInscripciones filas={resultado.filas} />
               </div>
             )}
           </section>

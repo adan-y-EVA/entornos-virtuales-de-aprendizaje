@@ -29,7 +29,7 @@ Rutas protegidas (definidas en `src/proxy.ts`):
 | `/` | ADMIN, INSTRUCTOR |
 | `/dashboard/estudiante` | ESTUDIANTE |
 | `/cursos`, `/asistencia`, `/certificados` | ADMIN, INSTRUCTOR |
-| `/inscripciones` | ADMIN |
+| `/inscripciones` | ADMIN, INSTRUCTOR |
 
 Sin sesion: las paginas redirigen a `/login` y las API responden `401`. Con un rol que no corresponde: la pagina redirige al panel del rol y la API responde `403`. Las mismas reglas de rol aplican a los equivalentes `/api/<ruta>`.
 
@@ -43,45 +43,34 @@ Postgres 18 corriendo en Docker: base `entornos-db`, usuario `postgres`, passwor
 
 ```bash
 pnpm install
-pnpm db:up
+pnpm db:setup
 ```
 
-`pnpm db:up` levanta el contenedor y no hay que correr migraciones ni seed a mano. Postgres ejecuta los scripts de `/docker-entrypoint-initdb.d` la unica vez que se crea el volumen, asi que en ese primer arranque quedan:
-
-1. `prisma/migrations/20260927191554_init/migration.sql` montado como `01_schema.sql`: crea las 13 tablas.
-2. `prisma/docker/02_seed.sql`: carga los datos de prueba.
-3. `prisma/docker/03_prisma_migrations.sql`: registra la migracion en el historial de Prisma, para que `pnpm db:migrate` no detecte drift.
-
-Si ya tenias el volumen creado antes de que existieran esos scripts, usa `pnpm db:fresh` para borrarlo y que se vuelvan a ejecutar.
-
-Ojo: los scripts de arranque solo cubren la migracion inicial. Cuando agregues migraciones nuevas, `pnpm db:up` por si solo no las aplica; corre `pnpm db:deploy`.
-
-### Comandos
+El contenedor de Postgres **solo levanta la base vacia**: el esquema y los datos de prueba los crea Prisma, que es la unica fuente de verdad.
 
 | Comando | Que hace |
 | --- | --- |
-| `pnpm db:up` | Levanta el Postgres de `compose.yaml` |
+| `pnpm db:up` | Levanta el Postgres (espera al healthcheck) y aplica las migraciones pendientes |
 | `pnpm db:down` | Apaga el contenedor, conservando el volumen |
-| `pnpm db:fresh` | Borra el volumen, lo recrea, aplica las migraciones pendientes y recarga la seed (se pierden los datos) |
+| `pnpm db:fresh` | Borra el esquema y lo reconstruye desde cero: aplica todas las migraciones y recarga la seed (se pierden los datos) |
 | `pnpm db:deploy` | Aplica las migraciones pendientes sin pedir confirmacion |
 | `pnpm db:migrate` | Crea y aplica una migracion segun los cambios en `schema.prisma` (pide confirmacion) |
 | `pnpm db:generate` | Regenera el cliente de Prisma en `generated/prisma` |
 | `pnpm db:seed` | Recarga los datos de prueba de `prisma/seed.ts`, borrando lo que haya |
 | `pnpm db:studio` | Abre Prisma Studio para explorar la base |
 | `pnpm db:reset` | Borra todas las tablas y reaplica las migraciones (destructivo) |
-| `pnpm db:setup` | Atajo: `db:up` + `db:deploy` + `db:generate` + `db:seed` |
+| `pnpm db:setup` | Atajo: `db:up` + `db:generate` + `db:seed` |
 | `pnpm typecheck` | `tsc --noEmit` |
 
 `postinstall` corre `prisma generate`, asi que el cliente siempre esta disponible despues de `pnpm install`.
 
-### Regenerar los datos de prueba en SQL
+`db:fresh` no borra el volumen de Docker, solo el esquema: es mas rapido y evita recrear el contenedor. Para borrar el volumen entero usa `docker compose down -v` y despues `pnpm db:setup`.
 
-`prisma/docker/02_seed.sql` es un `pg_dump` de la base ya sembrada. Despues de cambiar `prisma/seed.ts`:
+### Migraciones
 
-```bash
-pnpm db:seed
-docker exec entornos-postgres pg_dump -U postgres -d entornos-db --data-only --schema=public --exclude-table=_prisma_migrations --column-inserts --no-owner --no-privileges
-```
+- `pnpm db:migrate` crea un archivo nuevo en `prisma/migrations/` a partir de los cambios en `schema.prisma`. Ese archivo se aplica solo con `db:up` / `db:deploy`.
+- **No edites una migracion ya aplicada**: Prisma guarda el SHA256 de cada archivo en `_prisma_migrations` y detecta el cambio, pidiendo resetear la base. Para revertir un cambio de esquema creá una migracion nueva.
+- Cambiar `prisma/seed.ts` no requiere migracion; alcanza con `pnpm db:seed`.
 
 ## Inscripciones
 

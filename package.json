@@ -10,16 +10,16 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "postinstall": "prisma generate",
-    "db:up": "docker compose up -d",
+    "db:up": "docker compose up -d --wait --wait-timeout 60 && prisma migrate deploy",
     "db:down": "docker compose down",
-    "db:fresh": "docker compose down -v && docker compose up -d && prisma migrate deploy && prisma db seed",
+    "db:fresh": "docker compose up -d --wait --wait-timeout 60 && prisma migrate reset --force && prisma db seed",
     "db:generate": "prisma generate",
     "db:deploy": "prisma migrate deploy",
     "db:migrate": "prisma migrate dev",
     "db:seed": "prisma db seed",
     "db:reset": "prisma migrate reset",
     "db:studio": "prisma studio",
-    "db:setup": "pnpm db:up && pnpm db:deploy && pnpm db:generate && pnpm db:seed"
+    "db:setup": "pnpm db:up && pnpm db:generate && pnpm db:seed"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",

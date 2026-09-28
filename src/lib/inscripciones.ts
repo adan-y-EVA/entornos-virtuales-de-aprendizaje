@@ -1,6 +1,7 @@
+import { randomBytes } from "node:crypto";
 import { Prisma } from "@/generated/prisma/client";
+import { hashPassword } from "@/src/lib/auth";
 import { prisma } from "@/src/lib/prisma";
-import { generarPasswordAleatorio, hashPassword } from "@/src/lib/passwords";
 
 export const COL = {
   ci: "ciEstudiante",
@@ -200,7 +201,7 @@ async function asegurarEstudiante(
         nombres: datos.nombres,
         apellidos: datos.apellidos,
         email: datos.email || `sin-correo-${ci}@placeholder.local`,
-        passwordHash: hashPassword(generarPasswordAleatorio()),
+        passwordHash: hashPassword(randomBytes(32).toString("hex")),
       },
     });
   } else if (
