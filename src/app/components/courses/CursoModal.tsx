@@ -15,6 +15,7 @@ const cursoSchema = z.object({
   fechaIni: z.string().min(1, "Fecha requerida"),
   fechaFin: z.string().min(1, "Fecha requerida"),
   duracionHoras: z.number().min(1, "Mínimo 1 hora"),
+  cuposMax: z.number().min(0, "Los cupos no pueden ser negativos"),
 });
 
 export type CursoFormData = z.infer<typeof cursoSchema>;
@@ -45,7 +46,7 @@ export function CursoFormModal({ isOpen, onClose, onSubmit, cursoEditando }: Cur
         fechaFin: new Date(cursoEditando.fechaFin).toISOString().split('T')[0],
       });
     } else {
-      reset({ codigo: '', ciInstructor: '', nombre: '', grupo: '', nivel: '', costo: 0, duracionHoras: 0, fechaIni: '', fechaFin: '' });
+      reset({ codigo: '', ciInstructor: '', nombre: '', grupo: '', nivel: '', costo: 0, duracionHoras: 0, cuposMax: 0, fechaIni: '', fechaFin: '' });
     }
   }, [cursoEditando, reset, isOpen]);
 
@@ -111,9 +112,17 @@ export function CursoFormModal({ isOpen, onClose, onSubmit, cursoEditando }: Cur
             </div>
 
             <div className="space-y-1">
-                <label className="text-sm font-semibold text-text-main">Costo (Bs.)</label>
-                <input type="number" step="0.1" {...register('costo', { valueAsNumber: true })} className="w-full border border-input-border rounded-lg px-3 py-2 text-sm" />
-                {errors.costo && <p className="text-secondary text-xs">{errors.costo.message}</p>}
+              <label className="text-sm font-semibold text-text-main">Costo (Bs.)</label>
+              <input type="number" step="0.1" {...register('costo', { valueAsNumber: true })} className="w-full border border-input-border rounded-lg px-3 py-2 text-sm" />
+              {errors.costo && <p className="text-secondary text-xs">{errors.costo.message}</p>}
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-sm font-semibold text-text-main">
+                Cupos (0 = sin límite)
+              </label>
+              <input type="number" min={0} {...register('cuposMax', { valueAsNumber: true })} className="w-full border border-input-border rounded-lg px-3 py-2 text-sm" />
+              {errors.cuposMax && <p className="text-secondary text-xs">{errors.cuposMax.message}</p>}
             </div>
           </div>
 

@@ -72,6 +72,7 @@ model Curso {
   fechaFin      DateTime      @map("fecha_fin") @db.Date
   duracionHoras Int           @map("duracion_horas")
   numInscritos  Int           @default(0) @map("num_inscritos")
+  cuposMax      Int           @map("cupos_max")
   instructor    Instructor    @relation(fields: [ciInstructor], references: [ci])
   inscripciones Inscripcion[]
   sesiones      Sesion[]
@@ -109,20 +110,27 @@ model Sesion {
 }
 
 model Inscripcion {
-  id               Int        @id @default(autoincrement())
-  ciEstudiante     String     @map("ci_estudiante") @db.VarChar(10)
-  codigoCurso      String     @map("codigo_curso") @db.VarChar(20)
-  tipoPrecio       String     @map("tipo_precio") @db.VarChar(30)
-  fotocopiaCi      Boolean    @default(false) @map("fotocopia_ci")
-  fechaInscripcion DateTime   @default(now()) @map("fecha_inscripcion") @db.Date
-  estudiante       Estudiante @relation(fields: [ciEstudiante], references: [ci], onDelete: Cascade)
-  curso            Curso      @relation(fields: [codigoCurso], references: [codigo], onDelete: Cascade)
+  id               Int                @id @default(autoincrement())
+  ciEstudiante     String             @map("ci_estudiante") @db.VarChar(10)
+  codigoCurso      String             @map("codigo_curso") @db.VarChar(20)
+  tipoPrecio       String             @map("tipo_precio") @db.VarChar(30)
+  fotocopiaCi      Boolean            @default(false) @map("fotocopia_ci")
+  fechaInscripcion DateTime           @default(now()) @map("fecha_inscripcion") @db.Date
+  estado           EstadoInscripcion  @default(INSCRITO) @map("estado")
+  estudiante       Estudiante         @relation(fields: [ciEstudiante], references: [ci], onDelete: Cascade)
+  curso            Curso              @relation(fields: [codigoCurso], references: [codigo], onDelete: Cascade)
   pago             Pago?
 
   @@unique([ciEstudiante, codigoCurso])
   @@index([codigoCurso])
   @@index([ciEstudiante])
+  @@index([codigoCurso, estado])
   @@map("inscripcion")
+}
+
+enum EstadoInscripcion {
+  INSCRITO
+  CANCELADO
 }
 
 model Pago {

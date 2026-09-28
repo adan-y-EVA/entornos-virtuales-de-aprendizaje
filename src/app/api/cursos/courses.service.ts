@@ -10,6 +10,7 @@ export interface CursoInput {
   fechaIni: string;
   fechaFin: string;
   duracionHoras: number;
+  cuposMax: number;
 }
 
 export const CursoService = {
@@ -31,6 +32,7 @@ export const CursoService = {
         fechaIni: new Date(data.fechaIni),
         fechaFin: new Date(data.fechaFin),
         duracionHoras: data.duracionHoras,
+        cuposMax: data.cuposMax,
         estado: 'activo'
       }
     });
@@ -48,6 +50,7 @@ export const CursoService = {
         fechaIni: new Date(data.fechaIni),
         fechaFin: new Date(data.fechaFin),
         duracionHoras: data.duracionHoras,
+        cuposMax: data.cuposMax,
       }
     });
   },
