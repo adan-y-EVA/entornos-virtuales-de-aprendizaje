@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { PlusCircle, Search, LogOut, CheckCircle, FileText, Award, BookOpen, Clock, Users } from 'lucide-react';
+import { Search, LogOut, CheckCircle, FileText, Award, BookOpen, Clock, Users } from 'lucide-react';
 import { Button } from '../components/Button';
 import { Badge } from '../components/Badge';
 import { StatCard } from '../components/StatCard';
@@ -76,7 +76,6 @@ export default function DashboardView({
           <div className="col-span-2">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-xl font-primary font-bold text-text-main">Cursos</h3>
-              <Button icon={<PlusCircle size={18} />}>Lanzar Nuevo Curso</Button>
             </div>
             
             <div className="bg-white border border-card-border rounded-xl overflow-hidden">
