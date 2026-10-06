@@ -66,7 +66,9 @@ model Curso {
   nombre        String        @db.VarChar(150)
   grupo         String        @db.VarChar(10)
   nivel         String        @db.VarChar(50)
-  costo         Decimal       @db.Decimal(10, 2)
+  costoExterno  Decimal       @default(0) @map("costo_externo") @db.Decimal(10, 2)
+  costoUmss     Decimal       @default(0) @map("costo_umss") @db.Decimal(10, 2)
+  costoAuxiliar Decimal       @default(0) @map("costo_auxiliar") @db.Decimal(10, 2)
   moneda        String        @default("BOB") @db.VarChar(3)
   fechaIni      DateTime      @map("fecha_ini") @db.Date
   fechaFin      DateTime      @map("fecha_fin") @db.Date
