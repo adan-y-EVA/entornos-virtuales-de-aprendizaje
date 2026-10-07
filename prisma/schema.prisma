@@ -74,7 +74,7 @@ model Curso {
   fechaFin      DateTime      @map("fecha_fin") @db.Date
   duracionHoras Int           @map("duracion_horas")
   numInscritos  Int           @default(0) @map("num_inscritos")
-  cuposMax      Int           @map("cupos_max")
+  cuposMax      Int           @default(0) @map("cupos_max")
   instructor    Instructor    @relation(fields: [ciInstructor], references: [ci])
   inscripciones Inscripcion[]
   sesiones      Sesion[]
