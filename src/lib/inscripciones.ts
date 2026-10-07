@@ -1,5 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { Prisma } from "@/generated/prisma/client";
+import { ESTADOS_PAGO, esEstadoPago, type EstadoPago } from "@/src/lib/estados-pago";
 import { hashPassword } from "@/src/lib/auth";
 import { prisma } from "@/src/lib/prisma";
 
@@ -14,6 +15,7 @@ export const COL = {
   codigoCurso: "codigoCurso",
   cupos: "cuposMax",
   fechaInicio: "fechaIni",
+  montoPagado: "montoPagado",
 } as const;
 
 export const COLUMNAS_REQUERIDAS = [
@@ -41,6 +43,9 @@ export interface DatosInscripcion {
   ciEstudiante: string;
   codigoCurso: string;
   tipoPrecio: string;
+  estadoPago?: string;
+  montoFisico?: number | string;
+  montoQr?: number | string;
   nombres: string;
   apellidos: string;
   email?: string;
@@ -56,6 +61,7 @@ export interface ResultadoInscripcion {
   nombres: string;
   apellidos: string;
   estudianteNuevo: boolean;
+  estadoPago: EstadoPago;
 }
 
 type CursoRow = {
@@ -80,6 +86,7 @@ export interface CursoParaInscripcion {
   cuposMax: number;
   inscritos: number;
   abiertos: boolean;
+  costos: { EXTERNO: number; UMSS: number; AUXILIAR: number };
 }
 
 export async function obtenerCurso(
@@ -87,7 +94,18 @@ export async function obtenerCurso(
 ): Promise<CursoParaInscripcion | null> {
   const curso = await prisma.curso.findUnique({
     where: { codigo: codigoCurso },
-    select: { codigo: true, nombre: true, grupo: true, nivel: true, cuposMax: true, numInscritos: true, fechaIni: true },
+    select: {
+      codigo: true,
+      nombre: true,
+      grupo: true,
+      nivel: true,
+      cuposMax: true,
+      numInscritos: true,
+      fechaIni: true,
+      costoExterno: true,
+      costoUmss: true,
+      costoAuxiliar: true,
+    },
   });
 
   if (!curso) return null;
@@ -105,11 +123,35 @@ export async function obtenerCurso(
     inscritos,
     fechaIni: curso.fechaIni.toISOString().slice(0, 10),
     abiertos: hoyLocal() <= curso.fechaIni.toISOString().slice(0, 10),
+    costos: {
+      EXTERNO: Number(curso.costoExterno),
+      UMSS: Number(curso.costoUmss),
+      AUXILIAR: Number(curso.costoAuxiliar),
+    },
   };
 }
 
 function normalizar(valor: string | undefined): string {
   return (valor ?? "").trim();
+}
+
+export function parsearMonto(valor: unknown): { monto: number; error?: string } {
+  if (valor === undefined || valor === null || String(valor).trim() === "") {
+    return { monto: 0 };
+  }
+
+  const texto = String(valor).trim();
+  const monto = Number(texto);
+
+  if (!Number.isFinite(monto)) {
+    return { monto: 0, error: `El monto "${texto}" no es un número válido.` };
+  }
+
+  if (monto < 0) {
+    return { monto: 0, error: "El monto no puede ser negativo." };
+  }
+
+  return { monto };
 }
 
 export function validarCamposFormulario(
@@ -148,7 +190,7 @@ export function validarCamposFormulario(
   if (!tipoPrecio)
     errores.push({
       columna: COL.tipoPrecio,
-      mensaje: "El tipo de precio es obligatorio (valores usados: ORIGINAL, BENEFICIARIO).",
+      mensaje: "El tipo de estudiante es obligatorio (valores usados: EXTERNO, UMSS, AUXILIAR).",
     });
   else if (tipoPrecio.length > 30)
     errores.push({
@@ -171,6 +213,40 @@ export function validarCamposFormulario(
       columna: COL.codigoSis,
       mensaje: "El código SIS supera los 20 caracteres.",
     });
+
+  const estadoPago = normalizar(datos.estadoPago as string).toUpperCase();
+  const fisico = parsearMonto(datos.montoFisico);
+  const qr = parsearMonto(datos.montoQr);
+
+  if (fisico.error) errores.push({ columna: "montoFisico", mensaje: fisico.error });
+  if (qr.error) errores.push({ columna: "montoQr", mensaje: qr.error });
+
+  if (!fisico.error && !qr.error) {
+    const totalPagado = fisico.monto + qr.monto;
+
+    if (!estadoPago) {
+      if (totalPagado > 0)
+        errores.push({
+          columna: "estadoPago",
+          mensaje: "Debes indicar el estado de pago cuando se registra un monto.",
+        });
+    } else if (!esEstadoPago(estadoPago)) {
+      errores.push({
+        columna: "estadoPago",
+        mensaje: `El estado de pago no es válido (valores usados: ${ESTADOS_PAGO.join(", ")}).`,
+      });
+    } else if (estadoPago === "PENDIENTE" && totalPagado > 0) {
+      errores.push({
+        columna: "estadoPago",
+        mensaje: "Si el estado de pago es PENDIENTE, los montos deben ser 0.",
+      });
+    } else if (estadoPago === "PARCIAL" && totalPagado <= 0) {
+      errores.push({
+        columna: "estadoPago",
+        mensaje: "Si el estado de pago es PARCIAL, debes registrar un monto mayor a 0.",
+      });
+    }
+  }
 
   return errores;
 }
@@ -243,6 +319,10 @@ export async function registrarInscripcion(
 
   const ciEstudiante = datos.ciEstudiante.trim();
   const tipoPrecio = datos.tipoPrecio.trim().toUpperCase();
+  const estadoPagoCrudo = normalizar(datos.estadoPago).toUpperCase() || "PENDIENTE";
+  const estadoPago = esEstadoPago(estadoPagoCrudo) ? estadoPagoCrudo : "PENDIENTE";
+  const montoFisico = parsearMonto(datos.montoFisico).monto;
+  const montoQr = parsearMonto(datos.montoQr).monto;
 
   try {
     return await prisma.$transaction(async (tx) => {
@@ -306,10 +386,21 @@ export async function registrarInscripcion(
           ciEstudiante,
           codigoCurso: curso.codigo,
           tipoPrecio,
+          estadoPago,
           fotocopiaCi: datos.fotocopiaCi ?? false,
           estado: "INSCRITO",
         },
       });
+
+      if (montoFisico + montoQr > 0) {
+        await tx.pago.create({
+          data: {
+            idInscripcion: inscripcion.id,
+            montoFisico,
+            montoQr,
+          },
+        });
+      }
 
       await tx.curso.update({
         where: { codigo: curso.codigo },
@@ -323,6 +414,7 @@ export async function registrarInscripcion(
         nombres: datos.nombres.trim(),
         apellidos: datos.apellidos.trim(),
         estudianteNuevo: estudiante.estudianteNuevo,
+        estadoPago,
       };
     });
   } catch (error) {
