@@ -17,6 +17,7 @@ const cursoSchema = z.object({
   fechaIni: z.string().min(1, "Requerido"),
   fechaFin: z.string().min(1, "Requerido"),
   duracionHoras: z.number().min(1, "Mínimo 1 hora"),
+  cuposMax: z.number().min(0, "Los cupos no pueden ser negativos"),
 });
 
 export type CursoFormData = z.infer<typeof cursoSchema>;
@@ -52,11 +53,12 @@ export function CursoFormModal({ isOpen, onClose, onSubmit, cursoEditando, instr
         costoExterno: Number(cursoEditando.costoExterno),
         costoUmss: Number(cursoEditando.costoUmss),
         costoAuxiliar: Number(cursoEditando.costoAuxiliar),
+        cuposMax: Number(cursoEditando.cuposMax || 0), // Agregado para recuperar el valor al editar
         fechaIni: new Date(cursoEditando.fechaIni).toISOString().split('T')[0],
         fechaFin: new Date(cursoEditando.fechaFin).toISOString().split('T')[0],
       });
     } else {
-      reset({ codigo: '', ciInstructor: '', nombre: '', grupo: '', nivel: '', costoExterno: 0, costoUmss: 0, costoAuxiliar: 0, duracionHoras: 0, fechaIni: '', fechaFin: '' });
+      reset({ codigo: '', ciInstructor: '', nombre: '', grupo: '', nivel: '', costoExterno: 0, costoUmss: 0, costoAuxiliar: 0, duracionHoras: 0, cuposMax: 0, fechaIni: '', fechaFin: '' });
     }
   }, [cursoEditando, reset, isOpen]);
 
@@ -85,7 +87,6 @@ export function CursoFormModal({ isOpen, onClose, onSubmit, cursoEditando, instr
                 <option value="">Seleccione un instructor...</option>
                 {instructores.map(inst => (
                   <option key={inst.ci} value={inst.ci}>
-                    {/* Usamos las variables correctas aquí también */}
                     {inst.nombre} {inst.apellido} ({inst.ci})
                   </option>
                 ))}
@@ -136,7 +137,8 @@ export function CursoFormModal({ isOpen, onClose, onSubmit, cursoEditando, instr
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Ajustado a 2 columnas para cuadrar los 4 elementos restantes */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1">
               <label className="text-sm font-semibold text-text-main">Fecha de Inicio</label>
               <input type="date" {...register('fechaIni')} className="w-full border border-input-border rounded-lg px-3 py-2 text-sm" />
@@ -147,10 +149,19 @@ export function CursoFormModal({ isOpen, onClose, onSubmit, cursoEditando, instr
               <input type="date" {...register('fechaFin')} className="w-full border border-input-border rounded-lg px-3 py-2 text-sm" />
               {errors.fechaFin && <p className="text-secondary text-xs">{errors.fechaFin.message}</p>}
             </div>
+            
             <div className="space-y-1">
-              <label className="text-sm font-semibold text-text-main">Horas Totales</label>
-              <input type="number" {...register('duracionHoras', { valueAsNumber: true })} className="w-full border border-input-border rounded-lg px-3 py-2 text-sm" />
-              {errors.duracionHoras && <p className="text-secondary text-xs">{errors.duracionHoras.message}</p>}
+                <label className="text-sm font-semibold text-text-main">Horas Totales</label>
+                <input type="number" {...register('duracionHoras', { valueAsNumber: true })} className="w-full border border-input-border rounded-lg px-3 py-2 text-sm" />
+                {errors.duracionHoras && <p className="text-secondary text-xs">{errors.duracionHoras.message}</p>}
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-sm font-semibold text-text-main">
+                Cupos (0 = sin límite)
+              </label>
+              <input type="number" min={0} {...register('cuposMax', { valueAsNumber: true })} className="w-full border border-input-border rounded-lg px-3 py-2 text-sm" />
+              {errors.cuposMax && <p className="text-secondary text-xs">{errors.cuposMax.message}</p>}
             </div>
           </div>
 

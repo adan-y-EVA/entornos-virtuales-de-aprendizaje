@@ -32,7 +32,7 @@ export function GestionCursos() {
     const fetchInicial = async () => {
       try {
         const [resCursos, resInstructores] = await Promise.all([
-          fetch('/api/courses'),
+          fetch('/api/cursos'),
           fetch('/api/instructores')
         ]);
         

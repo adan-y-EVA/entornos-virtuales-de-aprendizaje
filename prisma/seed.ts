@@ -95,6 +95,7 @@ const cursos = [
     fechaIni: "2026-02-02",
     fechaFin: "2026-06-26",
     duracionHoras: 40,
+    cuposMax: 25,
   },
   {
     codigo: "INF-204",
@@ -108,6 +109,7 @@ const cursos = [
     fechaIni: "2026-02-09",
     fechaFin: "2026-06-26",
     duracionHoras: 48,
+    cuposMax: 20,
   },
   {
     codigo: "INF-301",
@@ -121,6 +123,7 @@ const cursos = [
     fechaIni: "2026-03-02",
     fechaFin: "2026-07-17",
     duracionHoras: 40,
+    cuposMax: 30,
   },
   {
     codigo: "INF-150",
@@ -134,6 +137,7 @@ const cursos = [
     fechaIni: "2025-08-04",
     fechaFin: "2025-12-12",
     duracionHoras: 32,
+    cuposMax: 0,
   },
 ];
 
@@ -312,6 +316,7 @@ async function main() {
         fechaFin: soloFecha(curso.fechaFin),
         duracionHoras: curso.duracionHoras,
         estado: "activo", // Agregamos el estado por defecto
+        cuposMax: curso.cuposMax,
       },
     });
 

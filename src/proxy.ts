@@ -14,7 +14,7 @@ const ROUTE_ROLES: Record<string, Rol[]> = {
   "/": ["ADMIN", "INSTRUCTOR"],
   "/dashboard/estudiante": ["ESTUDIANTE"],
   "/cursos": ["ADMIN", "INSTRUCTOR"],
-  "/inscripciones": ["ADMIN"],
+  "/inscripciones": ["ADMIN", "INSTRUCTOR"],
   "/asistencia": ["ADMIN", "INSTRUCTOR"],
   "/certificados": ["ADMIN", "INSTRUCTOR"],
 };
