@@ -1,52 +1,67 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search, LogOut, CheckCircle, FileText, Award, BookOpen, Clock, Users } from 'lucide-react';
 import { Button } from '../components/Button';
 import { Badge } from '../components/Badge';
 import { StatCard } from '../components/StatCard';
 
-export interface Curso {
-  id: string;
-  nombre: string;
-  horas: number;
-  horario: string;
-  instructor: string;
-  inscritos: number;
-  estado: 'activo' | 'pre-inscripcion';
-}
-
-export interface Certificado {
-  id: string;
+export interface CursoResumen {
   codigo: string;
-  alumno: string;
-  curso: string;
-  horas: number;
-  nota: number;
-  asistencia: number;
-  estado: 'aprobado' | 'pendiente';
+  nombre: string;
+  duracionHoras: number;
+  fechaIni: string;
+  fechaFin: string;
+  instructor: string; 
+  numInscritos: number;
+  estado: string;
 }
 
-interface DashboardProps {
-  estadisticas?: {
-    activos: number;
-    preInscritos: number;
-    alumnos: number;
-    certificados: number;
-  };
-  cursos?: Curso[];
-  certificados?: Certificado[];
+export interface CertificadoResumen {
+  id: number;
+  codigoVerificacion: string;
+  ciEstudiante: string;
+  codigoCurso: string;
+  fechaEmision: string;
+  tipo: string;
+  notaFinal: number | null;
+  pctAsistencia: number | null;
 }
 
-export default function DashboardView({ 
-  estadisticas = { activos: 0, preInscritos: 0, alumnos: 0, certificados: 0 },
-  cursos = [], 
-  certificados = [] 
-}: DashboardProps) {
-  
+export default function DashboardView() {
+  // 1. Estados para almacenar los datos de la base de datos
+  const [estadisticas, setEstadisticas] = useState({ activos: 0, preInscritos: 0, alumnos: 0, certificados: 0 });
+  const [cursos, setCursos] = useState<CursoResumen[]>([]);
+  const [certificados, setCertificados] = useState<CertificadoResumen[]>([]);
+  const [cargando, setCargando] = useState(true);
+
+  // 2. Fetch de datos al montar el componente
+  useEffect(() => {
+    const cargarDashboard = async () => {
+      try {
+        const res = await fetch('/api/dashboard');
+        if (res.ok) {
+          const data = await res.json();
+          setEstadisticas(data.estadisticas);
+          setCursos(data.cursos);
+          setCertificados(data.certificados);
+        }
+      } catch (error) {
+        console.error("Error obteniendo datos del dashboard", error);
+      } finally {
+        setCargando(false);
+      }
+    };
+
+    cargarDashboard();
+  }, []);
+
+  if (cargando) {
+    return <div className="p-8 text-center text-text-muted">Cargando panel de control...</div>;
+  }
+
   return (
     <div className="w-full h-full bg-white flex flex-col">
-      {/* Header simplificado para este ejemplo */}
       <header className="bg-white border-b border-card-border p-4 flex justify-between items-center w-full">
         <h2 className="text-2xl font-primary font-bold text-text-main">Panel de Control</h2>
         <div className="flex items-center space-x-4">
@@ -75,7 +90,7 @@ export default function DashboardView({
           {/* Tabla de Cursos Dinámica */}
           <div className="col-span-2">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-primary font-bold text-text-main">Cursos</h3>
+              <h3 className="text-xl font-primary font-bold text-text-main">Últimos Cursos</h3>
             </div>
             
             <div className="bg-white border border-card-border rounded-xl overflow-hidden">
@@ -93,26 +108,19 @@ export default function DashboardView({
                     <tr><td colSpan={4} className="p-4 text-center text-text-muted">No hay cursos registrados.</td></tr>
                   ) : (
                     cursos.map((curso) => (
-                      <tr key={curso.id} className="border-b border-card-border hover:bg-gray-50">
+                      <tr key={curso.codigo} className="border-b border-card-border hover:bg-gray-50">
                         <td className="p-4">
                           <p className="font-bold text-text-main">{curso.nombre}</p>
-                          <p className="text-text-muted text-xs">{curso.horas} horas • {curso.horario}</p>
+                          <p className="text-text-muted text-xs">{curso.duracionHoras} hrs • {new Date(curso.fechaIni).toLocaleDateString()}</p>
                         </td>
                         <td className="p-4 text-text-main text-sm">{curso.instructor}</td>
                         <td className="p-4">
                           <Badge variant={curso.estado === 'activo' ? 'success' : 'warning'}>
-                            {curso.inscritos} {curso.estado === 'activo' ? 'Activos' : 'Pre-inscritos'}
+                            {curso.numInscritos} Inscritos
                           </Badge>
                         </td>
                         <td className="p-4 flex space-x-2">
-                          {curso.estado === 'activo' ? (
-                            <>
-                              <Button variant="outline" size="sm">Asistencia</Button>
-                              <Button variant="outline" size="sm">Notas</Button>
-                            </>
-                          ) : (
-                            <Button variant="primary" size="sm">Validar Caja</Button>
-                          )}
+                          <Button variant="outline" size="sm">Detalles</Button>
                         </td>
                       </tr>
                     ))
@@ -133,28 +141,22 @@ export default function DashboardView({
                 certificados.map((cert) => (
                   <div key={cert.id} className="bg-white p-4 rounded-lg border border-card-border shadow-sm">
                     <div className="flex justify-between items-start mb-2">
-                      <div className={`flex items-center space-x-1 ${cert.estado === 'aprobado' ? 'text-green-600' : 'text-yellow-600'}`}>
+                      <div className={`flex items-center space-x-1 ${cert.tipo === 'APROBADO' ? 'text-green-600' : 'text-blue-600'}`}>
                         <CheckCircle size={14} />
-                        <span className="text-xs font-bold uppercase">{cert.estado}</span>
+                        <span className="text-xs font-bold uppercase">{cert.tipo}</span>
                       </div>
-                      <span className="text-xs text-text-muted font-mono">Cod: {cert.codigo}</span>
+                      <span className="text-xs text-text-muted font-mono">Cod: {cert.codigoVerificacion}</span>
                     </div>
-                    <h4 className="font-primary font-bold text-text-main">{cert.alumno}</h4>
-                    <p className="text-sm font-secondary text-text-muted mb-3">Curso: {cert.curso} ({cert.horas} hrs)</p>
+                    <h4 className="font-primary font-bold text-text-main">CI: {cert.ciEstudiante}</h4>
+                    <p className="text-sm font-secondary text-text-muted mb-3">Curso: {cert.codigoCurso}</p>
                     
                     <div className="flex justify-between items-center pt-3 border-t border-card-border mt-2">
-                      <p className="text-xs text-text-muted">Nota: {cert.nota}/100 • Asist: {cert.asistencia}%</p>
-                      {cert.estado === 'aprobado' ? (
-                        <Button variant="ghost" size="sm" icon={<FileText size={14} />}>PDF</Button>
-                      ) : (
-                        <Button variant="ghost" size="sm" icon={<Award size={14} />}>Emitir</Button>
-                      )}
+                      <p className="text-xs text-text-muted">Nota: {cert.notaFinal || '-'} • Asist: {cert.pctAsistencia || '-'}%</p>
+                      <Button variant="ghost" size="sm" icon={<FileText size={14} />}>PDF</Button>
                     </div>
                   </div>
                 ))
               )}
-
-              <Button variant="ghost" className="w-full">Ver todos</Button>
             </div>
           </div>
         </div>
