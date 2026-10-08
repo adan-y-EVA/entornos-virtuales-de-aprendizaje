@@ -161,35 +161,36 @@ const sesionesPorCurso: Record<string, { ambiente: number; fecha: string; inicio
   ],
 };
 
-const inscripciones: { estudiante: number; curso: number; tipoPrecio: string; fotocopiaCi: boolean; fecha: string }[] = [
-  { estudiante: 0, curso: 0, tipoPrecio: "ORIGINAL", fotocopiaCi: true, fecha: "2026-01-20" },
-  { estudiante: 1, curso: 0, tipoPrecio: "ORIGINAL", fotocopiaCi: true, fecha: "2026-01-21" },
-  { estudiante: 2, curso: 0, tipoPrecio: "BENEFICIARIO", fotocopiaCi: false, fecha: "2026-01-22" },
-  { estudiante: 3, curso: 1, tipoPrecio: "ORIGINAL", fotocopiaCi: true, fecha: "2026-01-25" },
-  { estudiante: 4, curso: 1, tipoPrecio: "ORIGINAL", fotocopiaCi: true, fecha: "2026-01-26" },
-  { estudiante: 5, curso: 1, tipoPrecio: "BENEFICIARIO", fotocopiaCi: false, fecha: "2026-01-27" },
-  { estudiante: 0, curso: 1, tipoPrecio: "ORIGINAL", fotocopiaCi: true, fecha: "2026-01-28" },
-  { estudiante: 6, curso: 2, tipoPrecio: "ORIGINAL", fotocopiaCi: true, fecha: "2026-02-10" },
-  { estudiante: 7, curso: 2, tipoPrecio: "ORIGINAL", fotocopiaCi: true, fecha: "2026-02-11" },
-  { estudiante: 1, curso: 2, tipoPrecio: "BENEFICIARIO", fotocopiaCi: false, fecha: "2026-02-12" },
-  { estudiante: 0, curso: 3, tipoPrecio: "ORIGINAL", fotocopiaCi: true, fecha: "2025-07-28" },
-  { estudiante: 2, curso: 3, tipoPrecio: "ORIGINAL", fotocopiaCi: true, fecha: "2025-07-29" },
-  { estudiante: 4, curso: 3, tipoPrecio: "BENEFICIARIO", fotocopiaCi: false, fecha: "2025-07-30" },
+const inscripciones: { estudiante: number; curso: number; tipoPrecio: string; estadoPago: "PENDIENTE" | "PARCIAL" | "PAGADO_TOTAL"; fotocopiaCi: boolean; fecha: string }[] = [
+  { estudiante: 0, curso: 0, tipoPrecio: "EXTERNO", estadoPago: "PAGADO_TOTAL", fotocopiaCi: true, fecha: "2026-01-20" },
+  { estudiante: 1, curso: 0, tipoPrecio: "UMSS", estadoPago: "PAGADO_TOTAL", fotocopiaCi: true, fecha: "2026-01-21" },
+  { estudiante: 2, curso: 0, tipoPrecio: "AUXILIAR", estadoPago: "PARCIAL", fotocopiaCi: false, fecha: "2026-01-22" },
+  { estudiante: 3, curso: 1, tipoPrecio: "UMSS", estadoPago: "PENDIENTE", fotocopiaCi: true, fecha: "2026-01-25" },
+  { estudiante: 4, curso: 1, tipoPrecio: "EXTERNO", estadoPago: "PAGADO_TOTAL", fotocopiaCi: true, fecha: "2026-01-26" },
+  { estudiante: 5, curso: 1, tipoPrecio: "AUXILIAR", estadoPago: "PARCIAL", fotocopiaCi: false, fecha: "2026-01-27" },
+  { estudiante: 0, curso: 1, tipoPrecio: "EXTERNO", estadoPago: "PAGADO_TOTAL", fotocopiaCi: true, fecha: "2026-01-28" },
+  { estudiante: 6, curso: 2, tipoPrecio: "UMSS", estadoPago: "PENDIENTE", fotocopiaCi: true, fecha: "2026-02-10" },
+  { estudiante: 7, curso: 2, tipoPrecio: "EXTERNO", estadoPago: "PAGADO_TOTAL", fotocopiaCi: true, fecha: "2026-02-11" },
+  { estudiante: 1, curso: 2, tipoPrecio: "UMSS", estadoPago: "PARCIAL", fotocopiaCi: false, fecha: "2026-02-12" },
+  { estudiante: 0, curso: 3, tipoPrecio: "EXTERNO", estadoPago: "PENDIENTE", fotocopiaCi: true, fecha: "2025-07-28" },
+  { estudiante: 2, curso: 3, tipoPrecio: "AUXILIAR", estadoPago: "PENDIENTE", fotocopiaCi: true, fecha: "2025-07-29" },
+  { estudiante: 4, curso: 3, tipoPrecio: "EXTERNO", estadoPago: "PARCIAL", fotocopiaCi: false, fecha: "2025-07-30" },
 ];
 
 const pagosPorInscripcion: { montoFisico: string; montoQr: string; fecha: string }[] = [
-  { montoFisico: "800.00", montoQr: "0.00", fecha: "2026-01-20" },
-  { montoFisico: "400.00", montoQr: "400.00", fecha: "2026-01-21" },
-  { montoFisico: "0.00", montoQr: "600.00", fecha: "2026-01-22" },
-  { montoFisico: "1200.00", montoQr: "0.00", fecha: "2026-01-25" },
-  { montoFisico: "600.00", montoQr: "600.00", fecha: "2026-01-26" },
-  { montoFisico: "0.00", montoQr: "900.00", fecha: "2026-01-27" },
-  { montoFisico: "1200.00", montoQr: "0.00", fecha: "2026-01-28" },
-  { montoFisico: "950.00", montoQr: "0.00", fecha: "2026-02-10" },
-  { montoFisico: "950.00", montoQr: "0.00", fecha: "2026-02-11" },
-  { montoFisico: "0.00", montoQr: "700.00", fecha: "2026-02-12" },
-  { montoFisico: "450.00", montoQr: "0.00", fecha: "2025-07-28" },
-  { montoFisico: "450.00", montoQr: "0.00", fecha: "2025-07-29" },
+  { montoFisico: "120.00", montoQr: "0.00", fecha: "2026-01-20" },
+  { montoFisico: "50.00", montoQr: "50.00", fecha: "2026-01-21" },
+  { montoFisico: "30.00", montoQr: "0.00", fecha: "2026-01-22" },
+  { montoFisico: "0.00", montoQr: "0.00", fecha: "2026-01-25" },
+  { montoFisico: "0.00", montoQr: "100.00", fecha: "2026-01-26" },
+  { montoFisico: "0.00", montoQr: "25.00", fecha: "2026-01-27" },
+  { montoFisico: "60.00", montoQr: "40.00", fecha: "2026-01-28" },
+  { montoFisico: "0.00", montoQr: "0.00", fecha: "2026-02-10" },
+  { montoFisico: "110.00", montoQr: "0.00", fecha: "2026-02-11" },
+  { montoFisico: "50.00", montoQr: "0.00", fecha: "2026-02-12" },
+  { montoFisico: "0.00", montoQr: "0.00", fecha: "2025-07-28" },
+  { montoFisico: "0.00", montoQr: "0.00", fecha: "2025-07-29" },
+  { montoFisico: "100.00", montoQr: "0.00", fecha: "2025-07-30" },
 ];
 
 const indexesAsistencia = [1, 2, 3, 4, 5, 7, 8, 9, 10, 12];
@@ -340,13 +341,14 @@ async function main() {
         ciEstudiante: estudiantes[inscripcion.estudiante].ci,
         codigoCurso: cursos[inscripcion.curso].codigo,
         tipoPrecio: inscripcion.tipoPrecio,
+        estadoPago: inscripcion.estadoPago,
         fotocopiaCi: inscripcion.fotocopiaCi,
         fechaInscripcion: soloFecha(inscripcion.fecha),
       },
     });
 
     const pago = pagosPorInscripcion[indicePago];
-    if (pago) {
+    if (pago && inscripcion.estadoPago !== "PENDIENTE") {
       await prisma.pago.create({
         data: {
           idInscripcion: creada.id,

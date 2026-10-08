@@ -5,6 +5,10 @@ import {
   validarCamposFormulario,
 } from "@/src/lib/inscripciones";
 
+function texto(valor: unknown): string | undefined {
+  return valor === undefined || valor === null ? undefined : String(valor);
+}
+
 export async function POST(request: Request) {
   let cuerpo: Record<string, unknown>;
 
@@ -39,6 +43,9 @@ export async function POST(request: Request) {
       apellidos: String(cuerpo.apellidos),
       codigoCurso: cuerpo.codigoCurso.trim(),
       tipoPrecio: String(cuerpo.tipoPrecio),
+      estadoPago: texto(cuerpo.estadoPago),
+      montoFisico: texto(cuerpo.montoFisico),
+      montoQr: texto(cuerpo.montoQr),
       codigoSis: cuerpo.codigoSis ? String(cuerpo.codigoSis) : undefined,
       email: cuerpo.email ? String(cuerpo.email) : undefined,
       celular: cuerpo.celular ? String(cuerpo.celular) : undefined,

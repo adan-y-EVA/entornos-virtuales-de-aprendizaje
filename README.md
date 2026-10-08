@@ -91,7 +91,7 @@ Body de la inscripcion manual:
   "nombres": "Ana",
   "apellidos": "Torrez",
   "codigoCurso": "INF-101",
-  "tipoPrecio": "ORIGINAL",
+  "tipoPrecio": "EXTERNO",
   "codigoSis": "2021001",
   "email": "ana@umss.edu.bo",
   "celular": "70123456",
@@ -114,6 +114,10 @@ Los errores de validacion responden `400` o `409` con `{ "error": "descripcion",
 
 Columnas obligatorias: `ciEstudiante`, `nombresEstudiante`, `apellidosEstudiante`, `tipoPrecio`.
 Columnas opcionales: `email`, `celular`, `codigoSis`.
+
+`tipoPrecio` es el tipo de estudiante y admite `EXTERNO`, `UMSS` o `AUXILIAR`. Segun ese valor
+se aplica el precio del curso correspondiente: `curso.costo_externo`, `curso.costo_umss` o
+`curso.costo_auxiliar`.
 
 El curso no va en el archivo: se elige en la pantalla y se envia como `codigoCurso`.
 Los nombres de columna se comparan sin distinguir mayusculas, espacios ni acentos

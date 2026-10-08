@@ -119,6 +119,7 @@ model Inscripcion {
   fotocopiaCi      Boolean            @default(false) @map("fotocopia_ci")
   fechaInscripcion DateTime           @default(now()) @map("fecha_inscripcion") @db.Date
   estado           EstadoInscripcion  @default(INSCRITO) @map("estado")
+  estadoPago       EstadoPago         @default(PENDIENTE) @map("estado_pago")
   estudiante       Estudiante         @relation(fields: [ciEstudiante], references: [ci], onDelete: Cascade)
   curso            Curso              @relation(fields: [codigoCurso], references: [codigo], onDelete: Cascade)
   pago             Pago?
@@ -133,6 +134,12 @@ model Inscripcion {
 enum EstadoInscripcion {
   INSCRITO
   CANCELADO
+}
+
+enum EstadoPago {
+  PENDIENTE
+  PARCIAL
+  PAGADO_TOTAL
 }
 
 model Pago {
