@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { 
   BookOpen, Users, Award, Calendar, 
-  CheckCircle, LogOut 
+  CheckCircle, LogOut , Briefcase
 } from 'lucide-react';
 import { useAuth } from '@/src/context/AuthContext';
 
@@ -28,6 +28,7 @@ export function Sidebar() {
     { nombre: 'Inscripciones', ruta: '/inscripciones', icono: <Users size={20} /> },
     { nombre: 'Asistencia y Notas', ruta: '/asistencia', icono: <CheckCircle size={20} /> },
     { nombre: 'Certificados', ruta: '/certificados', icono: <Award size={20} /> },
+    { nombre: 'Instructores', ruta: '/instructores', icono: <Briefcase size={20} /> },
   ];
 
   return (
