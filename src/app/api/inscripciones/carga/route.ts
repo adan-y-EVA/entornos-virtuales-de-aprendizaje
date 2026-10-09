@@ -1,18 +1,26 @@
 import { NextResponse } from "next/server";
 import * as XLSX from "xlsx";
 import type { ErrorValidacion } from "@/src/lib/inscripciones";
+import type { EstadoPago } from "@/src/lib/estados-pago";
 import {
   COL,
   COLUMNAS_REQUERIDAS,
   ErrorInscripcion,
   obtenerCurso,
+  parsearMonto,
   registrarInscripcion,
   validarCamposFormulario,
 } from "@/src/lib/inscripciones";
 
 const MAXIMO_FILAS = 5000;
 
-const COLUMNAS_OPCIONALES = [COL.email, COL.celular, COL.codigoSis];
+const COLUMNAS_OPCIONALES = [COL.email, COL.celular, COL.codigoSis, COL.montoPagado];
+
+function estadoDePago(monto: number, precio: number): EstadoPago {
+  if (monto <= 0) return "PENDIENTE";
+  if (monto >= precio) return "PAGADO_TOTAL";
+  return "PARCIAL";
+}
 
 export interface FilaReporte {
   fila: number;
@@ -178,11 +186,30 @@ export async function POST(request: Request) {
       celdas[columnaEstandar] = aTexto(cruda[posicion]);
     }
 
+    const montoPagado = parsearMonto(celdas[COL.montoPagado]);
+
+    if (montoPagado.error) {
+      reporte.push({
+        fila: filaNumero,
+        ciEstudiante: celdas[COL.ci],
+        nombres: celdas[COL.nombres],
+        apellidos: celdas[COL.apellidos],
+        estado: "ERROR",
+        errores: [{ columna: COL.montoPagado, mensaje: montoPagado.error }],
+      });
+      continue;
+    }
+
+    const costos = curso.costos as Record<string, number>;
+    const precio = costos[celdas[COL.tipoPrecio].trim().toUpperCase()] ?? 0;
+
     const datos = {
       ciEstudiante: celdas[COL.ci],
       nombres: celdas[COL.nombres],
       apellidos: celdas[COL.apellidos],
       tipoPrecio: celdas[COL.tipoPrecio],
+      estadoPago: estadoDePago(montoPagado.monto, precio),
+      montoFisico: montoPagado.monto,
       email: celdas[COL.email] || undefined,
       celular: celdas[COL.celular] || undefined,
       codigoSis: celdas[COL.codigoSis] || undefined,

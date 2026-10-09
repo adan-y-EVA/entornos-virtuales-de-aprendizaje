@@ -47,8 +47,10 @@ export function CursoTable({ cursos, cargando, onEdit, onArchivar }: CursoTableP
                 <div>{new Date(curso.fechaIni).toLocaleDateString()} - {new Date(curso.fechaFin).toLocaleDateString()}</div>
                 <div className="text-text-muted">{curso.duracionHoras} hrs | Inscritos: {curso.numInscritos}</div>
               </td>
-              <td className="p-4 text-text-main text-xs font-bold">
-                Bs. {Number(curso.costo).toFixed(2)}
+              <td className="p-4 text-text-main text-xs">
+                <div className="font-bold">Ext: Bs. {Number(curso.costoExterno).toFixed(2)}</div>
+                <div>UMSS: Bs. {Number(curso.costoUmss).toFixed(2)}</div>
+                <div className="text-text-muted">Aux: Bs. {Number(curso.costoAuxiliar).toFixed(2)}</div>
               </td>
               <td className="p-4">
                 <Badge variant={(curso.estado || 'activo') === 'activo' ? 'success' : 'default'}>

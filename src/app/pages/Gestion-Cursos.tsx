@@ -4,11 +4,12 @@ import React, { useState, useEffect } from 'react';
 import { PlusCircle } from 'lucide-react';
 import { Button } from '../components/Button';
 import { CursoTable } from '../components/courses/CursoTable';
-import { CursoFormModal, type CursoFormData, type CursoData } from '../components/courses/CursoModal'; 
+import { CursoFormModal, type CursoFormData, type CursoData, type InstructorData } from '../components/courses/CursoModal'; 
 
 export function GestionCursos() {
   const [cursos, setCursos] = useState<CursoData[]>([]);
   const [filtroEstado, setFiltroEstado] = useState<'activo' | 'archivado' | 'todos'>('activo');
+  const [instructores, setInstructores] = useState<InstructorData[]>([])
   
   const [cargando, setCargando] = useState(true); 
   
@@ -30,10 +31,14 @@ export function GestionCursos() {
 
     const fetchInicial = async () => {
       try {
-        const res = await fetch('/api/cursos');
-        const data = await res.json();
-        if (montado && res.ok) {
-          setCursos(data);
+        const [resCursos, resInstructores] = await Promise.all([
+          fetch('/api/cursos'),
+          fetch('/api/instructores')
+        ]);
+        
+        if (montado) {
+          if (resCursos.ok) setCursos(await resCursos.json());
+          if (resInstructores.ok) setInstructores(await resInstructores.json()); // <--- GUARDAMOS LOS INSTRUCTORES
         }
       } catch (error) {
         console.error("Error de carga inicial");
@@ -44,9 +49,7 @@ export function GestionCursos() {
 
     fetchInicial();
 
-    return () => {
-      montado = false;
-    };
+    return () => { montado = false; };
   }, []);
 
   const handleNuevoCurso = () => {
@@ -141,6 +144,7 @@ export function GestionCursos() {
         onClose={() => setModalOpen(false)} 
         onSubmit={handleGuardar} 
         cursoEditando={cursoEditando} 
+        instructores={instructores}
       />
     </div>
   );

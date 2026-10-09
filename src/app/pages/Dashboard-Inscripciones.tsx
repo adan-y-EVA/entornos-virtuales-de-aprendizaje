@@ -7,6 +7,7 @@ import { Badge } from '../components/Badge';
 import { Button } from '../components/Button';
 import { StatCard } from '../components/StatCard';
 import { TablaReporteInscripciones, type FilaReporte } from '../components/register/RegisterReportTable';
+import { ESTADOS_PAGO } from '@/src/lib/estados-pago';
 
 export interface CursoOption {
   codigo: string;
@@ -34,7 +35,7 @@ interface DashboardInscripcionesProps {
   resumen: ResumenInscripciones;
 }
 
-const tiposPrecio = ['NORMAL', 'ESTUDIANTE', 'AUXILIAR'];
+const tiposPrecio = ['EXTERNO', 'UMSS', 'AUXILIAR'];
 
 const inputClases =
   'w-full px-3 py-2 border border-input-border rounded-lg text-sm bg-white text-text-main focus:outline-none';
@@ -89,7 +90,7 @@ export default function DashboardInscripciones({
       } else {
         const inscripcion = cuerpo.inscripcion;
         setExitoManual(
-          `${inscripcion.nombres} ${inscripcion.apellidos} quedó inscrito en ${codigoCurso} (CI ${inscripcion.ciEstudiante}, SIS ${inscripcion.codigoSis}).` +
+          `${inscripcion.nombres} ${inscripcion.apellidos} quedó inscrito en ${codigoCurso} (CI ${inscripcion.ciEstudiante}, SIS ${inscripcion.codigoSis}). Estado de pago: ${inscripcion.estadoPago}.` +
             (inscripcion.estudianteNuevo ? ' Se creó su ficha de estudiante.' : ''),
         );
         formulario.reset();
@@ -136,9 +137,10 @@ export default function DashboardInscripciones({
 
   function descargarPlantilla() {
     const contenido =
-      '\uFEFFciEstudiante,nombresEstudiante,apellidosEstudiante,tipoPrecio,email,celular,codigoSis\n' +
-      '20000009,Ana,Torrez,ORIGINAL,ana.torres@umss.edu.bo,70123456,\n' +
-      '20000010,Luis,Fernandez,BENEFICIARIO,,,\n';
+      '\uFEFFciEstudiante,nombresEstudiante,apellidosEstudiante,tipoPrecio,email,celular,codigoSis,montoPagado\n' +
+      '20000009,Ana,Torrez,EXTERNO,ana.torres@umss.edu.bo,70123456,,120.50\n' +
+      '20000010,Luis,Fernandez,UMSS,,,,\n' +
+      '20000011,Marcela,Quispe,AUXILIAR,,,,\n';
     const url = URL.createObjectURL(new Blob([contenido], { type: 'text/csv;charset=utf-8' }));
     const enlace = document.createElement('a');
     enlace.href = url;
@@ -259,15 +261,53 @@ export default function DashboardInscripciones({
                 </div>
                 <div>
                   <label htmlFor="tipoPrecio" className={labelClases}>
-                    Tipo de precio *
+                    Tipo de estudiante *
                   </label>
-                  <select id="tipoPrecio" name="tipoPrecio" className={inputClases} defaultValue="ORIGINAL">
+                  <select id="tipoPrecio" name="tipoPrecio" className={inputClases} defaultValue={tiposPrecio[0]}>
                     {tiposPrecio.map((tipo) => (
                       <option key={tipo} value={tipo}>
                         {tipo}
                       </option>
                     ))}
                   </select>
+                </div>
+                <div>
+                  <label htmlFor="estadoPago" className={labelClases}>
+                    Estado de pago *
+                  </label>
+                  <select id="estadoPago" name="estadoPago" className={inputClases} defaultValue="PENDIENTE">
+                    {ESTADOS_PAGO.map((estado) => (
+                      <option key={estado} value={estado}>
+                        {estado}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label htmlFor="montoFisico" className={labelClases}>
+                    Pagado en efectivo (Bs)
+                  </label>
+                  <input
+                    id="montoFisico"
+                    name="montoFisico"
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    className={inputClases}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="montoQr" className={labelClases}>
+                    Pagado con QR (Bs)
+                  </label>
+                  <input
+                    id="montoQr"
+                    name="montoQr"
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    className={inputClases}
+                  />
                 </div>
                 <div className="flex items-end pb-2">
                   <label className="flex items-center gap-2 text-sm text-text-main">
@@ -315,8 +355,10 @@ export default function DashboardInscripciones({
             <p className="text-sm text-text-muted mb-4">
               Sube un archivo .csv o .xlsx con las columnas{' '}
               <span className="font-mono text-xs">ciEstudiante, nombresEstudiante, apellidosEstudiante, tipoPrecio</span>{' '}
-              y opcionalmente <span className="font-mono text-xs">email, celular, codigoSis</span>. Las
-              filas inválidas no bloquean a las válidas.
+              y opcionalmente <span className="font-mono text-xs">email, celular, codigoSis, montoPagado</span>.
+              Si <span className="font-mono text-xs">montoPagado</span> viene vacío la fila queda
+              PENDIENTE; si trae un monto en Bs se calcula PARCIAL o PAGADO_TOTAL según el precio del
+              curso para ese tipo de estudiante. Las filas inválidas no bloquean a las válidas.
             </p>
 
             <form onSubmit={cargarArchivo} className="space-y-4">

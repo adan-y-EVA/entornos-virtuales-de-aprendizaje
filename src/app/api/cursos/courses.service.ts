@@ -6,7 +6,9 @@ export interface CursoInput {
   nombre: string;
   grupo: string;
   nivel: string;
-  costo: number;
+  costoExterno: number;
+  costoUmss: number;
+  costoAuxiliar: number;
   fechaIni: string;
   fechaFin: string;
   duracionHoras: number;
@@ -16,8 +18,69 @@ export interface CursoInput {
 export const CursoService = {
   getAll: async () => {
     return await prisma.curso.findMany({
-      orderBy: { fechaIni: 'desc' }
+      orderBy: { fechaIni: 'desc' },
+      include: {
+        instructor: {
+          include: { usuario: { select: { nombres: true, apellidos: true } } }
+        }
+      }
     });
+  },
+
+  getByCodigo: async (codigo: string) => {
+    const curso = await prisma.curso.findUnique({
+      where: { codigo },
+      include: {
+        instructor: {
+          include: { usuario: { select: { nombres: true, apellidos: true, email: true } } }
+        },
+        inscripciones: {
+          orderBy: { fechaInscripcion: 'desc' },
+          include: {
+            estudiante: {
+              include: { usuario: { select: { nombres: true, apellidos: true } } }
+            },
+            pago: true
+          }
+        }
+      }
+    });
+
+    if (!curso) return null;
+
+    return {
+      codigo: curso.codigo,
+      nombre: curso.nombre,
+      grupo: curso.grupo,
+      nivel: curso.nivel,
+      estado: curso.estado,
+      moneda: curso.moneda,
+      costoExterno: Number(curso.costoExterno),
+      costoUmss: Number(curso.costoUmss),
+      costoAuxiliar: Number(curso.costoAuxiliar),
+      fechaIni: curso.fechaIni.toISOString().slice(0, 10),
+      fechaFin: curso.fechaFin.toISOString().slice(0, 10),
+      duracionHoras: curso.duracionHoras,
+      cuposMax: curso.cuposMax,
+      inscritos: curso.inscripciones.filter((i) => i.estado === 'INSCRITO').length,
+      instructor: {
+        ci: curso.instructor.ci,
+        nombre: `${curso.instructor.usuario.nombres} ${curso.instructor.usuario.apellidos}`,
+        email: curso.instructor.usuario.email,
+        especialidad: curso.instructor.especialidad
+      },
+      inscripciones: curso.inscripciones.map((i) => ({
+        id: i.id,
+        ciEstudiante: i.ciEstudiante,
+        codigoSis: i.estudiante.codigoSis,
+        nombre: `${i.estudiante.usuario.nombres} ${i.estudiante.usuario.apellidos}`,
+        tipoPrecio: i.tipoPrecio,
+        estado: i.estado,
+        estadoPago: i.estadoPago,
+        montoPagado: i.pago ? Number(i.pago.montoFisico) + Number(i.pago.montoQr) : 0,
+        fechaInscripcion: i.fechaInscripcion.toISOString().slice(0, 10)
+      }))
+    };
   },
 
   create: async (data: CursoInput) => {
@@ -28,7 +91,9 @@ export const CursoService = {
         nombre: data.nombre,
         grupo: data.grupo,
         nivel: data.nivel,
-        costo: data.costo,
+        costoExterno: data.costoExterno,
+        costoUmss: data.costoUmss,
+        costoAuxiliar: data.costoAuxiliar,
         fechaIni: new Date(data.fechaIni),
         fechaFin: new Date(data.fechaFin),
         duracionHoras: data.duracionHoras,
@@ -46,7 +111,9 @@ export const CursoService = {
         nombre: data.nombre,
         grupo: data.grupo,
         nivel: data.nivel,
-        costo: data.costo,
+        costoExterno: data.costoExterno,
+        costoUmss: data.costoUmss,
+        costoAuxiliar: data.costoAuxiliar,
         fechaIni: new Date(data.fechaIni),
         fechaFin: new Date(data.fechaFin),
         duracionHoras: data.duracionHoras,

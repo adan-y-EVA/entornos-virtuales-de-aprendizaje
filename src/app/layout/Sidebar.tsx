@@ -3,11 +3,9 @@
 import React from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
-import { 
-  BookOpen, Users, Award, Calendar, 
-  CheckCircle, LogOut 
-} from 'lucide-react';
+import { LogOut } from 'lucide-react';
 import { useAuth } from '@/src/context/AuthContext';
+import { getMenuForRole } from '@/src/lib/navigation';
 
 export function Sidebar() {
   // hook de Next.js para saber en qué URL estamos actualmente
@@ -21,14 +19,8 @@ export function Sidebar() {
     router.refresh();
   };
 
-  // Lista de rutas para renderizarlas dinámicamente
-  const menuItems = [
-    { nombre: 'Inicio', ruta: '/', icono: <BookOpen size={20} /> },
-    { nombre: 'Cursos y Horarios', ruta: '/cursos', icono: <Calendar size={20} /> },
-    { nombre: 'Inscripciones', ruta: '/inscripciones', icono: <Users size={20} /> },
-    { nombre: 'Asistencia y Notas', ruta: '/asistencia', icono: <CheckCircle size={20} /> },
-    { nombre: 'Certificados', ruta: '/certificados', icono: <Award size={20} /> },
-  ];
+  // Menú filtrado según el rol del usuario
+  const menuItems = getMenuForRole(user?.role ?? 'ESTUDIANTE');
 
   return (
     <aside className="w-64 bg-primary text-white flex flex-col hidden md:flex min-h-screen sticky top-0">
@@ -41,21 +33,34 @@ export function Sidebar() {
       {/* Navegación principal */}
       <nav className="flex-1 px-4 space-y-2 mt-4 font-secondary">
         {menuItems.map((item) => {
+          if (item.disabled) {
+            return (
+              <div
+                key={item.ruta}
+                className="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-400 cursor-not-allowed font-secondary"
+                title="Próximamente"
+              >
+                {item.icono}
+                <span>{item.nombre}</span>
+              </div>
+            );
+          }
+
           // Comprobamos si la ruta actual coincide con la del botón
           const isActive = pathname === item.ruta;
-          
+
           return (
-            <Link 
-              key={item.ruta} 
+            <Link
+              key={item.ruta}
               href={item.ruta}
               className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
-                isActive 
-                  ? 'bg-secondary text-white font-bold' 
+                isActive
+                  ? 'bg-secondary text-white font-bold'
                   : 'hover:bg-[#1a5b9c] text-gray-100'
               }`}
             >
               {item.icono}
-              <span>{item.nombre}</span>
+              <span className="font-secondary">{item.nombre}</span>
             </Link>
           );
         })}

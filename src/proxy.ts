@@ -17,6 +17,7 @@ const ROUTE_ROLES: Record<string, Rol[]> = {
   "/inscripciones": ["ADMIN", "INSTRUCTOR"],
   "/asistencia": ["ADMIN", "INSTRUCTOR"],
   "/certificados": ["ADMIN", "INSTRUCTOR"],
+  "/instructores": ["ADMIN"],
 };
 
 function allowedRoles(pathname: string): Rol[] | null {

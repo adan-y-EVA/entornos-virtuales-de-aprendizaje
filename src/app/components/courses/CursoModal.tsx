@@ -6,14 +6,16 @@ import { X } from 'lucide-react';
 import { Button } from '../Button';
 
 const cursoSchema = z.object({
-  codigo: z.string().min(2, "El código es requerido"),
-  ciInstructor: z.string().min(5, "Carnet inválido"),
-  nombre: z.string().min(5, "Nombre muy corto"),
-  grupo: z.string().min(1, "Grupo requerido"),
-  nivel: z.string().min(2, "Nivel requerido"),
-  costo: z.number().min(0, "Costo no puede ser negativo"),
-  fechaIni: z.string().min(1, "Fecha requerida"),
-  fechaFin: z.string().min(1, "Fecha requerida"),
+  codigo: z.string().min(2, "Requerido"),
+  ciInstructor: z.string().min(1, "Selecciona un instructor"),
+  nombre: z.string().min(5, "Muy corto"),
+  grupo: z.string().min(1, "Requerido"),
+  nivel: z.string().min(1, "Selecciona un nivel"),
+  costoExterno: z.number().min(0, "No negativo"),
+  costoUmss: z.number().min(0, "No negativo"),
+  costoAuxiliar: z.number().min(0, "No negativo"),
+  fechaIni: z.string().min(1, "Requerido"),
+  fechaFin: z.string().min(1, "Requerido"),
   duracionHoras: z.number().min(1, "Mínimo 1 hora"),
   cuposMax: z.number().min(0, "Los cupos no pueden ser negativos"),
 });
@@ -25,14 +27,21 @@ export interface CursoData extends CursoFormData {
   numInscritos?: number;
 }
 
+export interface InstructorData {
+  ci: string;
+  nombre: string;
+  apellido: string;
+}
+
 interface CursoFormModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: SubmitHandler<CursoFormData>; 
+  onSubmit: SubmitHandler<CursoFormData>;
   cursoEditando: CursoData | null;
+  instructores: InstructorData[];
 }
 
-export function CursoFormModal({ isOpen, onClose, onSubmit, cursoEditando }: CursoFormModalProps) {
+export function CursoFormModal({ isOpen, onClose, onSubmit, cursoEditando, instructores }: CursoFormModalProps) {
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<CursoFormData>({
     resolver: zodResolver(cursoSchema),
   });
@@ -41,12 +50,15 @@ export function CursoFormModal({ isOpen, onClose, onSubmit, cursoEditando }: Cur
     if (cursoEditando) {
       reset({
         ...cursoEditando,
-        costo: Number(cursoEditando.costo),
+        costoExterno: Number(cursoEditando.costoExterno),
+        costoUmss: Number(cursoEditando.costoUmss),
+        costoAuxiliar: Number(cursoEditando.costoAuxiliar),
+        cuposMax: Number(cursoEditando.cuposMax || 0), // Agregado para recuperar el valor al editar
         fechaIni: new Date(cursoEditando.fechaIni).toISOString().split('T')[0],
         fechaFin: new Date(cursoEditando.fechaFin).toISOString().split('T')[0],
       });
     } else {
-      reset({ codigo: '', ciInstructor: '', nombre: '', grupo: '', nivel: '', costo: 0, duracionHoras: 0, cuposMax: 0, fechaIni: '', fechaFin: '' });
+      reset({ codigo: '', ciInstructor: '', nombre: '', grupo: '', nivel: '', costoExterno: 0, costoUmss: 0, costoAuxiliar: 0, duracionHoras: 0, cuposMax: 0, fechaIni: '', fechaFin: '' });
     }
   }, [cursoEditando, reset, isOpen]);
 
@@ -70,8 +82,15 @@ export function CursoFormModal({ isOpen, onClose, onSubmit, cursoEditando }: Cur
               {errors.codigo && <p className="text-secondary text-xs">{errors.codigo.message}</p>}
             </div>
             <div className="space-y-1">
-              <label className="text-sm font-semibold text-text-main">CI Instructor</label>
-              <input {...register('ciInstructor')} className="w-full border border-input-border rounded-lg px-3 py-2 text-sm" />
+              <label className="text-sm font-semibold text-text-main">Instructor</label>
+              <select {...register('ciInstructor')} className="w-full border border-input-border rounded-lg px-3 py-2 text-sm bg-white">
+                <option value="">Seleccione un instructor...</option>
+                {instructores.map(inst => (
+                  <option key={inst.ci} value={inst.ci}>
+                    {inst.nombre} {inst.apellido} ({inst.ci})
+                  </option>
+                ))}
+              </select>
               {errors.ciInstructor && <p className="text-secondary text-xs">{errors.ciInstructor.message}</p>}
             </div>
           </div>
@@ -85,7 +104,12 @@ export function CursoFormModal({ isOpen, onClose, onSubmit, cursoEditando }: Cur
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1">
               <label className="text-sm font-semibold text-text-main">Nivel</label>
-              <input {...register('nivel')} className="w-full border border-input-border rounded-lg px-3 py-2 text-sm" />
+              <select {...register('nivel')} className="w-full border border-input-border rounded-lg px-3 py-2 text-sm bg-white">
+                <option value="">Seleccione...</option>
+                <option value="Básico">Básico</option>
+                <option value="Medio">Medio</option>
+                <option value="Avanzado">Avanzado</option>
+              </select>
               {errors.nivel && <p className="text-secondary text-xs">{errors.nivel.message}</p>}
             </div>
             <div className="space-y-1">
@@ -93,7 +117,28 @@ export function CursoFormModal({ isOpen, onClose, onSubmit, cursoEditando }: Cur
               <input {...register('grupo')} className="w-full border border-input-border rounded-lg px-3 py-2 text-sm" />
               {errors.grupo && <p className="text-secondary text-xs">{errors.grupo.message}</p>}
             </div>
+          </div>
 
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-1">
+              <label className="text-sm font-semibold text-text-main">Costo Externo</label>
+              <input type="number" step="0.1" {...register('costoExterno', { valueAsNumber: true })} className="w-full border border-input-border rounded-lg px-3 py-2 text-sm" />
+              {errors.costoExterno && <p className="text-secondary text-xs">{errors.costoExterno.message}</p>}
+            </div>
+            <div className="space-y-1">
+              <label className="text-sm font-semibold text-text-main">Costo UMSS</label>
+              <input type="number" step="0.1" {...register('costoUmss', { valueAsNumber: true })} className="w-full border border-input-border rounded-lg px-3 py-2 text-sm" />
+              {errors.costoUmss && <p className="text-secondary text-xs">{errors.costoUmss.message}</p>}
+            </div>
+            <div className="space-y-1">
+              <label className="text-sm font-semibold text-text-main">Costo Auxiliares</label>
+              <input type="number" step="0.1" {...register('costoAuxiliar', { valueAsNumber: true })} className="w-full border border-input-border rounded-lg px-3 py-2 text-sm" />
+              {errors.costoAuxiliar && <p className="text-secondary text-xs">{errors.costoAuxiliar.message}</p>}
+            </div>
+          </div>
+
+          {/* Ajustado a 2 columnas para cuadrar los 4 elementos restantes */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1">
               <label className="text-sm font-semibold text-text-main">Fecha de Inicio</label>
               <input type="date" {...register('fechaIni')} className="w-full border border-input-border rounded-lg px-3 py-2 text-sm" />
@@ -109,12 +154,6 @@ export function CursoFormModal({ isOpen, onClose, onSubmit, cursoEditando }: Cur
                 <label className="text-sm font-semibold text-text-main">Horas Totales</label>
                 <input type="number" {...register('duracionHoras', { valueAsNumber: true })} className="w-full border border-input-border rounded-lg px-3 py-2 text-sm" />
                 {errors.duracionHoras && <p className="text-secondary text-xs">{errors.duracionHoras.message}</p>}
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-sm font-semibold text-text-main">Costo (Bs.)</label>
-              <input type="number" step="0.1" {...register('costo', { valueAsNumber: true })} className="w-full border border-input-border rounded-lg px-3 py-2 text-sm" />
-              {errors.costo && <p className="text-secondary text-xs">{errors.costo.message}</p>}
             </div>
 
             <div className="space-y-1">

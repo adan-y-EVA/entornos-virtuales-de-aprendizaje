@@ -1,7 +1,7 @@
 import "dotenv/config";
 import { randomBytes, scryptSync } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
-import { PrismaClient } from "../generated/prisma/client";
+import { PrismaClient, EstadoInscripcion } from "../generated/prisma/client";
 
 const connectionString = process.env.DATABASE_URL;
 if (!connectionString) {
@@ -88,8 +88,10 @@ const cursos = [
     ciInstructor: "10000001",
     nombre: "Fundamentos de Programacion",
     grupo: "A",
-    nivel: "Licenciatura",
-    costo: "100.00",
+    nivel: "Básico", // Ajustado para que coincida con las opciones del dropdown
+    costoExterno: "120.00",
+    costoUmss: "100.00",
+    costoAuxiliar: "50.00",
     fechaIni: "2026-02-02",
     fechaFin: "2026-06-26",
     duracionHoras: 40,
@@ -100,8 +102,10 @@ const cursos = [
     ciInstructor: "10000002",
     nombre: "Base de Datos Relacionales",
     grupo: "B",
-    nivel: "Licenciatura",
-    costo: "80.00",
+    nivel: "Medio",
+    costoExterno: "100.00",
+    costoUmss: "80.00",
+    costoAuxiliar: "40.00",
     fechaIni: "2026-02-09",
     fechaFin: "2026-06-26",
     duracionHoras: 48,
@@ -112,8 +116,10 @@ const cursos = [
     ciInstructor: "10000003",
     nombre: "Redes de Computadores",
     grupo: "A",
-    nivel: "Licenciatura",
-    costo: "90.00",
+    nivel: "Avanzado",
+    costoExterno: "110.00",
+    costoUmss: "90.00",
+    costoAuxiliar: "45.00",
     fechaIni: "2026-03-02",
     fechaFin: "2026-07-17",
     duracionHoras: 40,
@@ -124,8 +130,10 @@ const cursos = [
     ciInstructor: "10000001",
     nombre: "Introduccion a la Informatica",
     grupo: "C",
-    nivel: "Tecnologia Superior",
-    costo: "150.00",
+    nivel: "Básico",
+    costoExterno: "180.00",
+    costoUmss: "150.00",
+    costoAuxiliar: "75.00",
     fechaIni: "2025-08-04",
     fechaFin: "2025-12-12",
     duracionHoras: 32,
@@ -152,36 +160,43 @@ const sesionesPorCurso: Record<string, { ambiente: number; fecha: string; inicio
     { ambiente: 2, fecha: "2025-08-11", inicio: "08:00", fin: "10:00" },
   ],
 };
-
-const inscripciones: { estudiante: number; curso: number; tipoPrecio: string; fotocopiaCi: boolean; fecha: string }[] = [
-  { estudiante: 0, curso: 0, tipoPrecio: "ORIGINAL", fotocopiaCi: true, fecha: "2026-01-20" },
-  { estudiante: 1, curso: 0, tipoPrecio: "ORIGINAL", fotocopiaCi: true, fecha: "2026-01-21" },
-  { estudiante: 2, curso: 0, tipoPrecio: "BENEFICIARIO", fotocopiaCi: false, fecha: "2026-01-22" },
-  { estudiante: 3, curso: 1, tipoPrecio: "ORIGINAL", fotocopiaCi: true, fecha: "2026-01-25" },
-  { estudiante: 4, curso: 1, tipoPrecio: "ORIGINAL", fotocopiaCi: true, fecha: "2026-01-26" },
-  { estudiante: 5, curso: 1, tipoPrecio: "BENEFICIARIO", fotocopiaCi: false, fecha: "2026-01-27" },
-  { estudiante: 0, curso: 1, tipoPrecio: "ORIGINAL", fotocopiaCi: true, fecha: "2026-01-28" },
-  { estudiante: 6, curso: 2, tipoPrecio: "ORIGINAL", fotocopiaCi: true, fecha: "2026-02-10" },
-  { estudiante: 7, curso: 2, tipoPrecio: "ORIGINAL", fotocopiaCi: true, fecha: "2026-02-11" },
-  { estudiante: 1, curso: 2, tipoPrecio: "BENEFICIARIO", fotocopiaCi: false, fecha: "2026-02-12" },
-  { estudiante: 0, curso: 3, tipoPrecio: "ORIGINAL", fotocopiaCi: true, fecha: "2025-07-28" },
-  { estudiante: 2, curso: 3, tipoPrecio: "ORIGINAL", fotocopiaCi: true, fecha: "2025-07-29" },
-  { estudiante: 4, curso: 3, tipoPrecio: "BENEFICIARIO", fotocopiaCi: false, fecha: "2025-07-30" },
+const inscripciones: { 
+  estudiante: number; 
+  curso: number; 
+  tipoPrecio: string; 
+  estado: EstadoInscripcion; 
+  fotocopiaCi: boolean; 
+  fecha: string 
+}[] = [
+  { estudiante: 0, curso: 0, tipoPrecio: "EXTERNO", estado: EstadoInscripcion.CANCELADO, fotocopiaCi: true, fecha: "2026-01-20" },
+  { estudiante: 1, curso: 0, tipoPrecio: "UMSS", estado: EstadoInscripcion.CANCELADO, fotocopiaCi: true, fecha: "2026-01-21" },
+  { estudiante: 2, curso: 0, tipoPrecio: "AUXILIAR", estado: EstadoInscripcion.INSCRITO, fotocopiaCi: false, fecha: "2026-01-22" },
+  { estudiante: 3, curso: 1, tipoPrecio: "UMSS", estado: EstadoInscripcion.INSCRITO, fotocopiaCi: true, fecha: "2026-01-25" },
+  { estudiante: 4, curso: 1, tipoPrecio: "EXTERNO", estado: EstadoInscripcion.CANCELADO, fotocopiaCi: true, fecha: "2026-01-26" },
+  { estudiante: 5, curso: 1, tipoPrecio: "AUXILIAR", estado: EstadoInscripcion.INSCRITO, fotocopiaCi: false, fecha: "2026-01-27" },
+  { estudiante: 0, curso: 1, tipoPrecio: "EXTERNO", estado: EstadoInscripcion.CANCELADO, fotocopiaCi: true, fecha: "2026-01-28" },
+  { estudiante: 6, curso: 2, tipoPrecio: "UMSS", estado: EstadoInscripcion.INSCRITO, fotocopiaCi: true, fecha: "2026-02-10" },
+  { estudiante: 7, curso: 2, tipoPrecio: "EXTERNO", estado: EstadoInscripcion.CANCELADO, fotocopiaCi: true, fecha: "2026-02-11" },
+  { estudiante: 1, curso: 2, tipoPrecio: "UMSS", estado: EstadoInscripcion.INSCRITO, fotocopiaCi: false, fecha: "2026-02-12" },
+  { estudiante: 0, curso: 3, tipoPrecio: "EXTERNO", estado: EstadoInscripcion.INSCRITO, fotocopiaCi: true, fecha: "2025-07-28" },
+  { estudiante: 2, curso: 3, tipoPrecio: "AUXILIAR", estado: EstadoInscripcion.INSCRITO, fotocopiaCi: true, fecha: "2025-07-29" },
+  { estudiante: 4, curso: 3, tipoPrecio: "EXTERNO", estado: EstadoInscripcion.INSCRITO, fotocopiaCi: false, fecha: "2025-07-30" },
 ];
 
 const pagosPorInscripcion: { montoFisico: string; montoQr: string; fecha: string }[] = [
-  { montoFisico: "800.00", montoQr: "0.00", fecha: "2026-01-20" },
-  { montoFisico: "400.00", montoQr: "400.00", fecha: "2026-01-21" },
-  { montoFisico: "0.00", montoQr: "600.00", fecha: "2026-01-22" },
-  { montoFisico: "1200.00", montoQr: "0.00", fecha: "2026-01-25" },
-  { montoFisico: "600.00", montoQr: "600.00", fecha: "2026-01-26" },
-  { montoFisico: "0.00", montoQr: "900.00", fecha: "2026-01-27" },
-  { montoFisico: "1200.00", montoQr: "0.00", fecha: "2026-01-28" },
-  { montoFisico: "950.00", montoQr: "0.00", fecha: "2026-02-10" },
-  { montoFisico: "950.00", montoQr: "0.00", fecha: "2026-02-11" },
-  { montoFisico: "0.00", montoQr: "700.00", fecha: "2026-02-12" },
-  { montoFisico: "450.00", montoQr: "0.00", fecha: "2025-07-28" },
-  { montoFisico: "450.00", montoQr: "0.00", fecha: "2025-07-29" },
+  { montoFisico: "120.00", montoQr: "0.00", fecha: "2026-01-20" },
+  { montoFisico: "50.00", montoQr: "50.00", fecha: "2026-01-21" },
+  { montoFisico: "30.00", montoQr: "0.00", fecha: "2026-01-22" },
+  { montoFisico: "0.00", montoQr: "0.00", fecha: "2026-01-25" },
+  { montoFisico: "0.00", montoQr: "100.00", fecha: "2026-01-26" },
+  { montoFisico: "0.00", montoQr: "25.00", fecha: "2026-01-27" },
+  { montoFisico: "60.00", montoQr: "40.00", fecha: "2026-01-28" },
+  { montoFisico: "0.00", montoQr: "0.00", fecha: "2026-02-10" },
+  { montoFisico: "110.00", montoQr: "0.00", fecha: "2026-02-11" },
+  { montoFisico: "50.00", montoQr: "0.00", fecha: "2026-02-12" },
+  { montoFisico: "0.00", montoQr: "0.00", fecha: "2025-07-28" },
+  { montoFisico: "0.00", montoQr: "0.00", fecha: "2025-07-29" },
+  { montoFisico: "100.00", montoQr: "0.00", fecha: "2025-07-30" },
 ];
 
 const indexesAsistencia = [1, 2, 3, 4, 5, 7, 8, 9, 10, 12];
@@ -192,7 +207,7 @@ const certificados = [
     estudiante: 0,
     curso: 3,
     fechaEmision: "2025-12-19",
-    tipo: "APROVADO",
+    tipo: "APROBADO",
     notaFinal: "78.00",
     pctAsistencia: "100.00",
   },
@@ -201,7 +216,7 @@ const certificados = [
     estudiante: 2,
     curso: 3,
     fechaEmision: "2025-12-19",
-    tipo: "APROVADO",
+    tipo: "APROBADO",
     notaFinal: "64.50",
     pctAsistencia: "80.00",
   },
@@ -292,6 +307,7 @@ async function main() {
     ambientes.map((ambiente) => prisma.ambiente.create({ data: ambiente })),
   );
 
+  // 1. PRIMERO CREAMOS LOS CURSOS
   for (const curso of cursos) {
     await prisma.curso.create({
       data: {
@@ -300,10 +316,13 @@ async function main() {
         nombre: curso.nombre,
         grupo: curso.grupo,
         nivel: curso.nivel,
-        costo: curso.costo,
+        costoExterno: curso.costoExterno,
+        costoUmss: curso.costoUmss,
+        costoAuxiliar: curso.costoAuxiliar,
         fechaIni: soloFecha(curso.fechaIni),
         fechaFin: soloFecha(curso.fechaFin),
         duracionHoras: curso.duracionHoras,
+        estado: "activo",
         cuposMax: curso.cuposMax,
       },
     });
@@ -321,6 +340,7 @@ async function main() {
     }
   }
 
+  // 2. LUEGO CREAMOS LAS INSCRIPCIONES (Dependen de los cursos)
   let indicePago = 0;
   for (const inscripcion of inscripciones) {
     const creada = await prisma.inscripcion.create({
@@ -328,13 +348,14 @@ async function main() {
         ciEstudiante: estudiantes[inscripcion.estudiante].ci,
         codigoCurso: cursos[inscripcion.curso].codigo,
         tipoPrecio: inscripcion.tipoPrecio,
+        estado: inscripcion.estado,
         fotocopiaCi: inscripcion.fotocopiaCi,
         fechaInscripcion: soloFecha(inscripcion.fecha),
       },
     });
 
     const pago = pagosPorInscripcion[indicePago];
-    if (pago) {
+    if (pago && (Number(pago.montoFisico) > 0 || Number(pago.montoQr) > 0)) {
       await prisma.pago.create({
         data: {
           idInscripcion: creada.id,
@@ -347,6 +368,7 @@ async function main() {
     indicePago += 1;
   }
 
+  // 3. ACTUALIZAMOS EL NÚMERO DE INSCRITOS EN EL CURSO
   for (const codigoCurso of Object.keys(sesionesPorCurso)) {
     const total = await prisma.inscripcion.count({ where: { codigoCurso } });
     await prisma.curso.update({
@@ -355,6 +377,7 @@ async function main() {
     });
   }
 
+  // 4. CREAMOS ASISTENCIAS Y CERTIFICADOS
   for (const indice of indexesAsistencia) {
     const inscripcion = inscripciones[indice];
     const sesiones = await prisma.sesion.findMany({
