@@ -1,6 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { CursoService } from "../courses.service";
 
+export async function GET(_request: NextRequest, { params }: { params: Promise<{ codigo: string }> }) {
+  try {
+    const { codigo } = await params;
+    const curso = await CursoService.getByCodigo(codigo);
+
+    if (!curso) {
+      return NextResponse.json({ error: `El curso ${codigo} no existe` }, { status: 404 });
+    }
+
+    return NextResponse.json(curso);
+  } catch (error) {
+    console.error("Error al obtener el curso:", error);
+    return NextResponse.json({ error: "No se pudo obtener el curso" }, { status: 500 });
+  }
+}
+
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ codigo: string }> }) {
   try {
     const { codigo } = await params;

@@ -1,10 +1,13 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Search, LogOut, CheckCircle, FileText, Award, BookOpen, Clock, Users } from 'lucide-react';
 import { Button } from '../components/Button';
 import { Badge } from '../components/Badge';
 import { StatCard } from '../components/StatCard';
+import { CursoDetalleModal } from '../components/courses/CursoDetalleModal';
+import { useAuth } from '@/src/context/AuthContext';
 
 export interface CursoResumen {
   codigo: string;
@@ -34,6 +37,17 @@ export default function DashboardView() {
   const [cursos, setCursos] = useState<CursoResumen[]>([]);
   const [certificados, setCertificados] = useState<CertificadoResumen[]>([]);
   const [cargando, setCargando] = useState(true);
+  const [busqueda, setBusqueda] = useState('');
+  const [cursoDetalle, setCursoDetalle] = useState<string | null>(null);
+
+  const router = useRouter();
+  const { logout } = useAuth();
+
+  const handleLogout = async () => {
+    await logout();
+    router.replace('/login');
+    router.refresh();
+  };
 
   // 2. Fetch de datos al montar el componente
   useEffect(() => {
@@ -56,6 +70,13 @@ export default function DashboardView() {
     cargarDashboard();
   }, []);
 
+  const termino = busqueda.trim().toLowerCase();
+  const cursosFiltrados = termino
+    ? cursos.filter((curso) =>
+        [curso.nombre, curso.codigo, curso.instructor].some((campo) => campo.toLowerCase().includes(termino)),
+      )
+    : cursos;
+
   if (cargando) {
     return <div className="p-8 text-center text-text-muted">Cargando panel de control...</div>;
   }
@@ -69,11 +90,13 @@ export default function DashboardView() {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-text-muted" size={18} />
             <input 
               type="text" 
-              placeholder="Buscar..." 
+              placeholder="Buscar curso..." 
+              value={busqueda}
+              onChange={(e) => setBusqueda(e.target.value)}
               className="pl-10 pr-4 py-2 border border-input-border rounded-lg text-sm w-64"
             />
           </div>
-          <Button variant="outline" icon={<LogOut size={16} />}>Salir</Button>
+          <Button variant="outline" icon={<LogOut size={16} />} onClick={handleLogout}>Salir</Button>
         </div>
       </header>
 
@@ -104,10 +127,14 @@ export default function DashboardView() {
                   </tr>
                 </thead>
                 <tbody>
-                  {cursos.length === 0 ? (
-                    <tr><td colSpan={4} className="p-4 text-center text-text-muted">No hay cursos registrados.</td></tr>
+                  {cursosFiltrados.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="p-4 text-center text-text-muted">
+                        {termino ? 'Ningún curso coincide con la búsqueda.' : 'No hay cursos registrados.'}
+                      </td>
+                    </tr>
                   ) : (
-                    cursos.map((curso) => (
+                    cursosFiltrados.map((curso) => (
                       <tr key={curso.codigo} className="border-b border-card-border hover:bg-gray-50">
                         <td className="p-4">
                           <p className="font-bold text-text-main">{curso.nombre}</p>
@@ -120,7 +147,7 @@ export default function DashboardView() {
                           </Badge>
                         </td>
                         <td className="p-4 flex space-x-2">
-                          <Button variant="outline" size="sm">Detalles</Button>
+                          <Button variant="outline" size="sm" onClick={() => setCursoDetalle(curso.codigo)}>Detalles</Button>
                         </td>
                       </tr>
                     ))
@@ -161,6 +188,8 @@ export default function DashboardView() {
           </div>
         </div>
       </main>
+
+      <CursoDetalleModal codigo={cursoDetalle} onClose={() => setCursoDetalle(null)} />
     </div>
   );
 }
