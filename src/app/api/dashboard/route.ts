@@ -1,33 +1,33 @@
 import { NextResponse } from "next/server";
-import { prisma } from "../../../lib/prisma";
+import { prisma } from "@/src/lib/prisma";
+
 export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
-    // Ejecutamos las consultas en paralelo para mayor velocidad
     const [
-      totalCursos, 
-      totalEstudiantes, 
-      totalCertificados, 
-      ultimosCursos, 
+      totalCursos,
+      preInscritos,
+      totalEstudiantes,
+      totalCertificados,
+      ultimosCursos,
       ultimosCertificados
     ] = await Promise.all([
       prisma.curso.count({ where: { estado: 'activo' } }),
+      prisma.inscripcion.count({ where: { estado: 'INSCRITO', estadoPago: 'PENDIENTE' } }),
       prisma.estudiante.count(),
       prisma.certificado.count(),
-      // Traemos solo los 5 cursos más recientes
       prisma.curso.findMany({
         take: 5,
         orderBy: { fechaIni: 'desc' },
         include: { instructor: { include: { usuario: true } } }
       }),
-      // Traemos los 5 certificados más recientes
       prisma.certificado.findMany({
         take: 5,
         orderBy: { fechaEmision: 'desc' }
       })
     ]);
 
-    // Formateamos los cursos para aplanar el nombre del instructor
     const cursosFormateados = ultimosCursos.map(c => ({
       codigo: c.codigo,
       nombre: c.nombre,
@@ -42,7 +42,7 @@ export async function GET() {
     return NextResponse.json({
       estadisticas: {
         activos: totalCursos,
-        preInscritos: 0, // Puedes calcularlo sumando inscripciones si manejas ese estado
+        preInscritos: preInscritos,
         alumnos: totalEstudiantes,
         certificados: totalCertificados,
       },

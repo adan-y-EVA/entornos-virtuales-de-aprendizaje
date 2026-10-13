@@ -60,8 +60,7 @@ export default function DashboardView() {
           setCursos(data.cursos);
           setCertificados(data.certificados);
         }
-      } catch (error) {
-        console.error("Error obteniendo datos del dashboard", error);
+      } catch {
       } finally {
         setCargando(false);
       }
