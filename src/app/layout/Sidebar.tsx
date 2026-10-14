@@ -22,6 +22,12 @@ export function Sidebar() {
   // Menú filtrado según el rol del usuario
   const menuItems = getMenuForRole(user?.role ?? 'ESTUDIANTE');
 
+  // Ruta activa: la coincidencia exacta o la más específica (subrutas como /asistencia/sesion/1)
+  const rutasActivas = menuItems.filter(
+    (item) => pathname === item.ruta || (item.ruta !== '/' && pathname.startsWith(`${item.ruta}/`)),
+  );
+  const rutaActiva = rutasActivas.sort((a, b) => b.ruta.length - a.ruta.length)[0]?.ruta ?? null;
+
   return (
     <aside className="w-64 bg-primary text-white flex flex-col hidden md:flex min-h-screen sticky top-0">
       {/* Título / Logo */}
@@ -47,7 +53,7 @@ export function Sidebar() {
           }
 
           // Comprobamos si la ruta actual coincide con la del botón
-          const isActive = pathname === item.ruta;
+          const isActive = item.ruta === rutaActiva;
 
           return (
             <Link
