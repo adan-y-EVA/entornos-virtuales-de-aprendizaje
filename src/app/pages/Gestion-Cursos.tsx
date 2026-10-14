@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { PlusCircle } from 'lucide-react';
+import { toast } from 'sonner';
+import { useApi } from '@/src/hooks/useApi';
 import { Button } from '../components/Button';
 import { CursoTable } from '../components/courses/CursoTable';
 import { CursoFormModal, type CursoFormData, type CursoData, type InstructorData } from '../components/courses/CursoModal'; 
@@ -16,41 +18,33 @@ export function GestionCursos() {
   const [modalOpen, setModalOpen] = useState(false);
   const [cursoEditando, setCursoEditando] = useState<CursoData | null>(null);
 
+  const { call } = useApi();
+
   const refetchCursos = async () => {
-    try {
-      const res = await fetch('/api/cursos');
-      const data = await res.json();
-      if (res.ok) setCursos(data);
-    } catch (error) {
-      console.error("Error cargando cursos");
-    }
+    const res = await call<CursoData[]>('/api/cursos');
+    if (res?.ok) setCursos(res.data);
   };
 
   useEffect(() => {
     let montado = true;
 
     const fetchInicial = async () => {
-      try {
-        const [resCursos, resInstructores] = await Promise.all([
-          fetch('/api/cursos'),
-          fetch('/api/instructores')
-        ]);
-        
-        if (montado) {
-          if (resCursos.ok) setCursos(await resCursos.json());
-          if (resInstructores.ok) setInstructores(await resInstructores.json()); // <--- GUARDAMOS LOS INSTRUCTORES
-        }
-      } catch (error) {
-        console.error("Error de carga inicial");
-      } finally {
-        if (montado) setCargando(false);
+      const [resCursos, resInstructores] = await Promise.all([
+        call<CursoData[]>('/api/cursos'),
+        call<InstructorData[]>('/api/instructores'),
+      ]);
+
+      if (montado) {
+        if (resCursos?.ok) setCursos(resCursos.data);
+        if (resInstructores?.ok) setInstructores(resInstructores.data);
+        setCargando(false);
       }
     };
 
     fetchInicial();
 
     return () => { montado = false; };
-  }, []);
+  }, [call]);
 
   const handleNuevoCurso = () => {
     setCursoEditando(null);
@@ -63,42 +57,26 @@ export function GestionCursos() {
   };
 
   const handleGuardar = async (data: CursoFormData) => {
-    try {
-      const url = cursoEditando ? `/api/cursos/${cursoEditando.codigo}` : '/api/cursos';
-      const method = cursoEditando ? 'PUT' : 'POST';
+    const url = cursoEditando ? `/api/cursos/${cursoEditando.codigo}` : '/api/cursos';
+    const method = cursoEditando ? 'PUT' : 'POST';
 
-      const res = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-      });
+    const res = await call<{ curso: CursoData }>(url, { method, body: data });
+    if (!res?.ok) return;
 
-      if (!res.ok) {
-        const errorData = await res.json();
-        alert(errorData.error || "Ocurrió un error al guardar.");
-        return;
-      }
-
-      await refetchCursos();
-      setModalOpen(false);
-    } catch (error) {
-      alert("Error de red. Verifica tu conexión.");
-    }
+    await refetchCursos();
+    setModalOpen(false);
+    toast.success(cursoEditando ? "Curso actualizado correctamente." : "Curso creado correctamente.");
   };
 
   const handleArchivar = async (codigo: string, estadoActual: string) => {
-    try {
-      const res = await fetch(`/api/cursos/${codigo}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ estadoActual: estadoActual || 'activo' })
-      });
+    const res = await call<{ curso: CursoData }>(`/api/cursos/${codigo}`, {
+      method: 'PATCH',
+      body: { estadoActual: estadoActual || 'activo' },
+    });
+    if (!res?.ok) return;
 
-      if (res.ok) await refetchCursos();
-      else alert("No se pudo archivar el curso");
-    } catch (error) {
-      alert("Error de red al intentar archivar.");
-    }
+    await refetchCursos();
+    toast.success("Estado del curso actualizado correctamente.");
   };
 
   const cursosFiltrados = cursos.filter(c => 

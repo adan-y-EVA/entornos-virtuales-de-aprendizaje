@@ -1,17 +1,14 @@
-import { NextResponse } from "next/server";
 import { prisma } from "../../../../lib/prisma";
 import { createSession, verifyPassword, type Rol } from "../../../../lib/auth";
 import { loginSchema } from "../../../../lib/validations";
+import { ok, fail, unauthorized, forbidden } from "@/src/lib/api-response";
 
 export async function POST(request: Request) {
   const body = await request.json().catch(() => null);
   const parsed = loginSchema.safeParse(body);
 
   if (!parsed.success) {
-    return NextResponse.json(
-      { error: "Datos invalidos. Revisa el correo y la contrasena." },
-      { status: 400 },
-    );
+    return fail("Datos invalidos. Revisa el correo y la contrasena.", 400);
   }
 
   const { email, password } = parsed.data;
@@ -22,18 +19,12 @@ export async function POST(request: Request) {
   });
 
   if (!usuario || !verifyPassword(password, usuario.passwordHash)) {
-    return NextResponse.json(
-      { error: "Credenciales invalidas." },
-      { status: 401 },
-    );
+    return unauthorized("Credenciales invalidas.");
   }
 
   const rol = usuario.roles[0]?.rol.nombre as Rol | undefined;
   if (!rol) {
-    return NextResponse.json(
-      { error: "El usuario no tiene un rol asignado." },
-      { status: 403 },
-    );
+    return forbidden("El usuario no tiene un rol asignado.");
   }
 
   await createSession({
@@ -43,8 +34,5 @@ export async function POST(request: Request) {
     nombre: `${usuario.nombres} ${usuario.apellidos}`,
   });
 
-  return NextResponse.json({
-    ok: true,
-    user: { ci: usuario.ci, email: usuario.email, role: rol },
-  });
+  return ok({ user: { ci: usuario.ci, email: usuario.email, role: rol } });
 }

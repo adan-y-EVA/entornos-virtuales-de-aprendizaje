@@ -44,7 +44,7 @@ export function AuthProvider({
         return;
       }
       const data = await res.json();
-      setUser(data.user ?? null);
+      setUser(data?.data?.user ?? null);
     } catch {
       setUser(null);
     }
@@ -76,7 +76,7 @@ export function AuthProvider({
 
       await refresh();
       const data = await res.json().catch(() => null);
-      return { ok: true, role: data?.user?.role as Rol | undefined };
+      return { ok: true, role: data?.data?.user?.role as Rol | undefined };
     },
     [refresh],
   );

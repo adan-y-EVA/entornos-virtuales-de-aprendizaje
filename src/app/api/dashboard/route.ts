@@ -1,33 +1,34 @@
-import { NextResponse } from "next/server";
-import { prisma } from "../../../lib/prisma";
+import { prisma } from "@/src/lib/prisma";
+import { logger } from "@/src/lib/logger";
+import { ok, fail } from "@/src/lib/api-response";
+
 export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
-    // Ejecutamos las consultas en paralelo para mayor velocidad
     const [
-      totalCursos, 
-      totalEstudiantes, 
-      totalCertificados, 
-      ultimosCursos, 
+      totalCursos,
+      preInscritos,
+      totalEstudiantes,
+      totalCertificados,
+      ultimosCursos,
       ultimosCertificados
     ] = await Promise.all([
       prisma.curso.count({ where: { estado: 'activo' } }),
+      prisma.inscripcion.count({ where: { estado: 'INSCRITO', estadoPago: 'PENDIENTE' } }),
       prisma.estudiante.count(),
       prisma.certificado.count(),
-      // Traemos solo los 5 cursos más recientes
       prisma.curso.findMany({
         take: 5,
         orderBy: { fechaIni: 'desc' },
         include: { instructor: { include: { usuario: true } } }
       }),
-      // Traemos los 5 certificados más recientes
       prisma.certificado.findMany({
         take: 5,
         orderBy: { fechaEmision: 'desc' }
       })
     ]);
 
-    // Formateamos los cursos para aplanar el nombre del instructor
     const cursosFormateados = ultimosCursos.map(c => ({
       codigo: c.codigo,
       nombre: c.nombre,
@@ -39,10 +40,10 @@ export async function GET() {
       estado: c.estado
     }));
 
-    return NextResponse.json({
+    return ok({
       estadisticas: {
         activos: totalCursos,
-        preInscritos: 0, // Puedes calcularlo sumando inscripciones si manejas ese estado
+        preInscritos: preInscritos,
         alumnos: totalEstudiantes,
         certificados: totalCertificados,
       },
@@ -50,7 +51,7 @@ export async function GET() {
       certificados: ultimosCertificados
     });
   } catch (error) {
-    console.error("Error cargando dashboard:", error);
-    return NextResponse.json({ error: "Error interno" }, { status: 500 });
+    logger.error("GET /api/dashboard", { error: error instanceof Error ? error.message : String(error) });
+    return fail("Error interno", 500);
   }
 }

@@ -1,14 +1,14 @@
-import { NextResponse } from "next/server";
 import { verifySession } from "../../../../lib/auth";
+import { ok, unauthorized } from "@/src/lib/api-response";
 
 export async function GET() {
   const session = await verifySession();
 
   if (!session) {
-    return NextResponse.json({ error: "No autenticado." }, { status: 401 });
+    return unauthorized();
   }
 
-  return NextResponse.json({
+  return ok({
     user: {
       ci: session.sub,
       email: session.email,

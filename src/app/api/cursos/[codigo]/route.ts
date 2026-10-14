@@ -1,5 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { CursoService } from "../courses.service";
+import { logger } from "@/src/lib/logger";
+import { ok, fail, notFound } from "@/src/lib/api-response";
 
 export async function GET(_request: NextRequest, { params }: { params: Promise<{ codigo: string }> }) {
   try {
@@ -7,13 +9,13 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
     const curso = await CursoService.getByCodigo(codigo);
 
     if (!curso) {
-      return NextResponse.json({ error: `El curso ${codigo} no existe` }, { status: 404 });
+      return notFound(`El curso ${codigo} no existe`);
     }
 
-    return NextResponse.json(curso);
+    return ok(curso);
   } catch (error) {
-    console.error("Error al obtener el curso:", error);
-    return NextResponse.json({ error: "No se pudo obtener el curso" }, { status: 500 });
+    logger.error("GET /api/cursos/[codigo]", { error: error instanceof Error ? error.message : String(error) });
+    return fail("No se pudo obtener el curso", 500);
   }
 }
 
@@ -22,10 +24,11 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     const { codigo } = await params;
     const body = await request.json().catch(() => null);
     const cursoActualizado = await CursoService.update(codigo, body);
-    
-    return NextResponse.json({ ok: true, curso: cursoActualizado });
-  } catch {
-    return NextResponse.json({ error: "No se pudo actualizar el curso" }, { status: 400 });
+
+    return ok({ curso: cursoActualizado });
+  } catch (error) {
+    logger.warn("PUT /api/cursos/[codigo]", { error: error instanceof Error ? error.message : String(error) });
+    return fail("No se pudo actualizar el curso", 400);
   }
 }
 
@@ -35,9 +38,10 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     const { codigo } = await params;
     const body = await request.json().catch(() => null);
     const cursoModificado = await CursoService.toggleEstado(codigo, body.estadoActual);
-    
-    return NextResponse.json({ ok: true, curso: cursoModificado });
-  } catch {
-    return NextResponse.json({ error: "No se pudo archivar el curso" }, { status: 400 });
+
+    return ok({ curso: cursoModificado });
+  } catch (error) {
+    logger.warn("PATCH /api/cursos/[codigo]", { error: error instanceof Error ? error.message : String(error) });
+    return fail("No se pudo archivar el curso", 400);
   }
 }

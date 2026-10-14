@@ -1,10 +1,12 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Plus, X, Search, Briefcase } from 'lucide-react';
+import { toast } from 'sonner';
+import { useApi } from '@/src/hooks/useApi';
 import { Button } from '../components/Button';
 
 const instructorSchema = z.object({
@@ -34,45 +36,32 @@ export default function PaginaInstructores() {
     resolver: zodResolver(instructorSchema)
   });
 
-  const cargarInstructores = async () => {
-    // Ya no hacemos setCargando(true) aquí para evitar el error del useEffect
-    try {
-      const res = await fetch('/api/instructores');
-      if (res.ok) setInstructores(await res.json());
-    } catch (error) {
-      console.error(error);
-    } finally {
-      // Esto es asíncrono, así que a React no le molesta
-      setCargando(false);
-    }
-  };
+  const { call } = useApi();
+
+  const cargarInstructores = useCallback(async () => {
+    const res = await call<InstructorResumen[]>('/api/instructores');
+    if (res?.ok) setInstructores(res.data);
+    setCargando(false);
+  }, [call]);
 
   useEffect(() => {
-    // eslint-disable-next-line
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     cargarInstructores();
-  }, []);
+  }, [cargarInstructores]);
 
   const onSubmit = async (data: InstructorFormData) => {
-    try {
-      const res = await fetch('/api/instructores', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
+    const res = await call<{ message: string }>('/api/instructores', {
+      method: 'POST',
+      body: data,
+    });
+    if (!res?.ok) return;
 
-      if (res.ok) {
-        setModalAbierto(false);
-        reset();
-        // Activamos la carga manualmente solo cuando vamos a recargar la tabla tras guardar
-        setCargando(true); 
-        cargarInstructores(); 
-      } else {
-        const error = await res.json();
-        alert(error.error || "Error al guardar");
-      }
-    } catch (error) {
-      alert("Error de conexión");
-    }
+    setModalAbierto(false);
+    reset();
+    toast.success("Instructor registrado correctamente.");
+    // Activamos la carga manualmente solo cuando vamos a recargar la tabla tras guardar
+    setCargando(true); 
+    cargarInstructores(); 
   };
 
   return (

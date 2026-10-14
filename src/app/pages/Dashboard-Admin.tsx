@@ -8,6 +8,7 @@ import { Badge } from '../components/Badge';
 import { StatCard } from '../components/StatCard';
 import { CursoDetalleModal } from '../components/courses/CursoDetalleModal';
 import { useAuth } from '@/src/context/AuthContext';
+import { useApi } from '@/src/hooks/useApi';
 
 export interface CursoResumen {
   codigo: string;
@@ -31,6 +32,12 @@ export interface CertificadoResumen {
   pctAsistencia: number | null;
 }
 
+interface DashboardData {
+  estadisticas: { activos: number; preInscritos: number; alumnos: number; certificados: number };
+  cursos: CursoResumen[];
+  certificados: CertificadoResumen[];
+}
+
 export default function DashboardView() {
   // 1. Estados para almacenar los datos de la base de datos
   const [estadisticas, setEstadisticas] = useState({ activos: 0, preInscritos: 0, alumnos: 0, certificados: 0 });
@@ -42,6 +49,7 @@ export default function DashboardView() {
 
   const router = useRouter();
   const { logout } = useAuth();
+  const { call } = useApi();
 
   const handleLogout = async () => {
     await logout();
@@ -52,23 +60,17 @@ export default function DashboardView() {
   // 2. Fetch de datos al montar el componente
   useEffect(() => {
     const cargarDashboard = async () => {
-      try {
-        const res = await fetch('/api/dashboard');
-        if (res.ok) {
-          const data = await res.json();
-          setEstadisticas(data.estadisticas);
-          setCursos(data.cursos);
-          setCertificados(data.certificados);
-        }
-      } catch (error) {
-        console.error("Error obteniendo datos del dashboard", error);
-      } finally {
-        setCargando(false);
+      const res = await call<DashboardData>('/api/dashboard');
+      if (res?.ok) {
+        setEstadisticas(res.data.estadisticas);
+        setCursos(res.data.cursos);
+        setCertificados(res.data.certificados);
       }
+      setCargando(false);
     };
 
     cargarDashboard();
-  }, []);
+  }, [call]);
 
   const termino = busqueda.trim().toLowerCase();
   const cursosFiltrados = termino

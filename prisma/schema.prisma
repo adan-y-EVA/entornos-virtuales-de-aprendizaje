@@ -154,16 +154,22 @@ model Pago {
 }
 
 model Asistencia {
-  id           Int        @id @default(autoincrement())
-  idSesion     Int        @map("id_sesion")
-  ciEstudiante String     @map("ci_estudiante") @db.VarChar(10)
-  presente     Boolean    @default(false)
-  sesion       Sesion     @relation(fields: [idSesion], references: [id], onDelete: Cascade)
-  estudiante   Estudiante @relation(fields: [ciEstudiante], references: [ci], onDelete: Cascade)
+  id           Int              @id @default(autoincrement())
+  idSesion     Int              @map("id_sesion")
+  ciEstudiante String           @map("ci_estudiante") @db.VarChar(10)
+  estado       EstadoAsistencia @default(AUSENTE)
+  sesion       Sesion           @relation(fields: [idSesion], references: [id], onDelete: Cascade)
+  estudiante   Estudiante       @relation(fields: [ciEstudiante], references: [ci], onDelete: Cascade)
 
   @@unique([idSesion, ciEstudiante])
   @@index([ciEstudiante])
   @@map("asistencia")
+}
+
+enum EstadoAsistencia {
+  PRESENTE
+  AUSENTE
+  JUSTIFICADA
 }
 
 model Certificado {

@@ -390,7 +390,7 @@ async function main() {
         data: {
           idSesion: sesion.id,
           ciEstudiante: estudiantes[inscripcion.estudiante].ci,
-          presente,
+          estado: presente ? "PRESENTE" : "AUSENTE",
         },
       });
     }
