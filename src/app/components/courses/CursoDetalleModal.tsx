@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
+import { useApi } from '@/src/hooks/useApi';
 import { Badge } from '../Badge';
 
 export interface InscripcionDetalle {
@@ -67,28 +68,25 @@ export function CursoDetalleModal({ codigo, onClose }: CursoDetalleModalProps) {
     error?: string;
   } | null>(null);
 
+  const { call } = useApi();
+
   useEffect(() => {
     if (!codigo) return;
 
     let montado = true;
 
     const cargar = async () => {
-      try {
-        const res = await fetch(`/api/cursos/${encodeURIComponent(codigo)}`);
-        const data = await res.json();
-        if (!montado) return;
-        if (res.ok) setResultado({ codigo, curso: data });
-        else setResultado({ codigo, error: data.error ?? 'No se pudo cargar el curso' });
-      } catch {
-        if (montado) setResultado({ codigo, error: 'No se pudo conectar con el servidor' });
-      }
+      const res = await call<CursoDetalle>(`/api/cursos/${encodeURIComponent(codigo)}`, { silent: true });
+      if (!montado) return;
+      if (res?.ok) setResultado({ codigo, curso: res.data });
+      else setResultado({ codigo, error: res?.error ?? 'No se pudo conectar con el servidor' });
     };
 
     cargar();
     return () => {
       montado = false;
     };
-  }, [codigo]);
+  }, [codigo, call]);
 
   // Mientras llega la respuesta del curso nuevo no se muestra la del anterior
   const actual = resultado?.codigo === codigo ? resultado : null;

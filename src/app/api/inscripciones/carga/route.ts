@@ -1,5 +1,6 @@
-import { NextResponse } from "next/server";
 import * as XLSX from "xlsx";
+import { logger } from "@/src/lib/logger";
+import { ok, fail } from "@/src/lib/api-response";
 import type { ErrorValidacion } from "@/src/lib/inscripciones";
 import type { EstadoPago } from "@/src/lib/estados-pago";
 import {
@@ -68,12 +69,9 @@ export async function POST(request: Request) {
   try {
     formData = await request.formData();
   } catch {
-    return NextResponse.json(
-      {
-        error:
-          "No se pudo leer el archivo. Se esperaba un formulario con el campo 'archivo' y 'codigoCurso'.",
-      },
-      { status: 400 },
+    return fail(
+      "No se pudo leer el archivo. Se esperaba un formulario con el campo 'archivo' y 'codigoCurso'.",
+      400,
     );
   }
 
@@ -81,42 +79,28 @@ export async function POST(request: Request) {
   const codigoCurso = String(formData.get("codigoCurso") ?? "").trim();
 
   if (!(archivo instanceof File)) {
-    return NextResponse.json(
-      { error: "No se seleccionó ningún archivo." },
-      { status: 400 },
-    );
+    return fail("No se seleccionó ningún archivo.", 400);
   }
 
   const extension = archivo.name.split(".").pop()?.toLowerCase();
   if (extension !== "csv" && extension !== "xlsx") {
-    return NextResponse.json(
-      { error: `El formato "${extension ?? "desconocido"}" no está soportado. Usa .csv o .xlsx.` },
-      { status: 400 },
-    );
+    return fail(`El formato "${extension ?? "desconocido"}" no está soportado. Usa .csv o .xlsx.`, 400);
   }
 
   if (!codigoCurso) {
-    return NextResponse.json(
-      { error: "Debes indicar el curso destino de la carga." },
-      { status: 400 },
-    );
+    return fail("Debes indicar el curso destino de la carga.", 400);
   }
 
   const curso = await obtenerCurso(codigoCurso);
   if (!curso) {
-    return NextResponse.json(
-      { error: `El curso ${codigoCurso} no existe.`, columna: COL.codigoCurso },
-      { status: 404 },
-    );
+    return fail(`El curso ${codigoCurso} no existe.`, 404, { columna: COL.codigoCurso });
   }
 
   if (!curso.abiertos) {
-    return NextResponse.json(
-      {
-        error: `La inscripción al curso ${curso.codigo} se cerró: la fecha de inicio (${curso.fechaIni}) ya pasó.`,
-        columna: COL.fechaInicio,
-      },
-      { status: 409 },
+    return fail(
+      `La inscripción al curso ${curso.codigo} se cerró: la fecha de inicio (${curso.fechaIni}) ya pasó.`,
+      409,
+      { columna: COL.fechaInicio },
     );
   }
 
@@ -124,15 +108,12 @@ export async function POST(request: Request) {
   try {
     libro = XLSX.read(await archivo.arrayBuffer(), { type: "array", codepage: 65001 });
   } catch {
-    return NextResponse.json(
-      { error: "El archivo está corrupto o no se pudo leer." },
-      { status: 400 },
-    );
+    return fail("El archivo está corrupto o no se pudo leer.", 400);
   }
 
   const hoja = libro.Sheets[libro.SheetNames[0]];
   if (!hoja) {
-    return NextResponse.json({ error: "El archivo está vacío." }, { status: 400 });
+    return fail("El archivo está vacío.", 400);
   }
 
   const matriz = XLSX.utils.sheet_to_json<unknown[]>(hoja, {
@@ -142,10 +123,7 @@ export async function POST(request: Request) {
   });
 
   if (matriz.length < 2) {
-    return NextResponse.json(
-      { error: "El archivo no tiene filas de datos para procesar." },
-      { status: 400 },
-    );
+    return fail("El archivo no tiene filas de datos para procesar.", 400);
   }
 
   const mapa = mapearEncabezados(matriz[0]);
@@ -154,21 +132,17 @@ export async function POST(request: Request) {
   );
 
   if (faltantes.length > 0) {
-    return NextResponse.json(
-      {
-        error: `Al archivo le faltan columnas obligatorias: ${faltantes.join(", ")}.`,
-        columnas: faltantes,
-      },
-      { status: 400 },
+    return fail(
+      `Al archivo le faltan columnas obligatorias: ${faltantes.join(", ")}.`,
+      400,
+      { columnas: faltantes },
     );
   }
 
   if (matriz.length - 1 > MAXIMO_FILAS) {
-    return NextResponse.json(
-      {
-        error: `El archivo tiene ${matriz.length - 1} filas y el máximo permitido es ${MAXIMO_FILAS}.`,
-      },
-      { status: 400 },
+    return fail(
+      `El archivo tiene ${matriz.length - 1} filas y el máximo permitido es ${MAXIMO_FILAS}.`,
+      400,
     );
   }
 
@@ -257,7 +231,7 @@ export async function POST(request: Request) {
         continue;
       }
 
-      console.error(`Error inesperado en la fila ${filaNumero}:`, error);
+      logger.error("POST /api/inscripciones/carga (fila inesperada)", { fila: filaNumero, error: error instanceof Error ? error.message : String(error) });
       reporte.push({
         fila: filaNumero,
         ciEstudiante: datos.ciEstudiante,
@@ -277,7 +251,7 @@ export async function POST(request: Request) {
   const exitosos = reporte.filter((fila) => fila.estado === "OK");
   const fallidos = reporte.length - exitosos.length;
 
-  return NextResponse.json({
+  return ok({
     resumen: { total: reporte.length, exitosos: exitosos.length, fallidos },
     filas: reporte,
   });

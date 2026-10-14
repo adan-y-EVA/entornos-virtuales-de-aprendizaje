@@ -88,7 +88,7 @@ export default function DashboardInscripciones({
       if (!respuesta.ok) {
         setErrorManual(cuerpo.error ?? 'No se pudo completar la inscripción.');
       } else {
-        const inscripcion = cuerpo.inscripcion;
+        const inscripcion = cuerpo.data.inscripcion;
         setExitoManual(
           `${inscripcion.nombres} ${inscripcion.apellidos} quedó inscrito en ${codigoCurso} (CI ${inscripcion.ciEstudiante}, SIS ${inscripcion.codigoSis}). Estado de pago: ${inscripcion.estadoPago}.` +
             (inscripcion.estudianteNuevo ? ' Se creó su ficha de estudiante.' : ''),
@@ -123,7 +123,7 @@ export default function DashboardInscripciones({
       if (!respuesta.ok) {
         setErrorCarga(cuerpo.error ?? 'No se pudo procesar el archivo.');
       } else {
-        setResultado(cuerpo);
+        setResultado(cuerpo.data);
         formulario.reset();
         setNombreArchivo('');
         router.refresh();

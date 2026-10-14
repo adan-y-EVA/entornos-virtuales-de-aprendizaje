@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { decrypt, SESSION_COOKIE, type Rol } from "./lib/auth";
+import { unauthorized, forbidden } from "./lib/api-response";
 
 const PUBLIC_ROUTES = ["/login", "/register"];
 const PUBLIC_API = ["/api/auth/login", "/api/auth/logout"];
@@ -50,7 +51,7 @@ export async function proxy(request: NextRequest) {
 
   if (!session) {
     if (isApi) {
-      return Response.json({ error: "No autenticado." }, { status: 401 });
+      return unauthorized();
     }
     if (isPublic) {
       return NextResponse.next();
@@ -65,7 +66,7 @@ export async function proxy(request: NextRequest) {
   const roles = allowedRoles(pathname);
   if (roles && !roles.includes(session.role)) {
     if (isApi) {
-      return Response.json({ error: "No autorizado." }, { status: 403 });
+      return forbidden();
     }
     return NextResponse.redirect(new URL(DEFAULT_HOME[session.role], request.nextUrl));
   }

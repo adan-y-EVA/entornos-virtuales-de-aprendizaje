@@ -1,4 +1,5 @@
-import { NextResponse } from "next/server";
+import { logger } from "@/src/lib/logger";
+import { created, fail } from "@/src/lib/api-response";
 import {
   ErrorInscripcion,
   registrarInscripcion,
@@ -15,25 +16,16 @@ export async function POST(request: Request) {
   try {
     cuerpo = await request.json();
   } catch {
-    return NextResponse.json(
-      { error: "El cuerpo de la petición no es JSON válido." },
-      { status: 400 },
-    );
+    return fail("El cuerpo de la petición no es JSON válido.", 400);
   }
 
   const errores = validarCamposFormulario(cuerpo);
   if (errores.length > 0) {
-    return NextResponse.json(
-      { error: errores[0].mensaje, columna: errores[0].columna },
-      { status: 400 },
-    );
+    return fail(errores[0].mensaje, 400, { columna: errores[0].columna });
   }
 
   if (typeof cuerpo.codigoCurso !== "string" || !cuerpo.codigoCurso.trim()) {
-    return NextResponse.json(
-      { error: "El curso es obligatorio.", columna: "codigoCurso" },
-      { status: 400 },
-    );
+    return fail("El curso es obligatorio.", 400, { columna: "codigoCurso" });
   }
 
   try {
@@ -52,19 +44,13 @@ export async function POST(request: Request) {
       fotocopiaCi: cuerpo.fotocopiaCi === true,
     });
 
-    return NextResponse.json({ ok: true, inscripcion: resultado }, { status: 201 });
+    return created({ inscripcion: resultado });
   } catch (error) {
     if (error instanceof ErrorInscripcion) {
-      return NextResponse.json(
-        { error: error.message, columna: error.columna },
-        { status: 409 },
-      );
+      return fail(error.message, 409, { columna: error.columna });
     }
 
-    console.error("Error al inscribir:", error);
-    return NextResponse.json(
-      { error: "No se pudo completar la inscripción." },
-      { status: 500 },
-    );
+    logger.error("POST /api/inscripciones", { error: error instanceof Error ? error.message : String(error) });
+    return fail("No se pudo completar la inscripción.", 500);
   }
 }

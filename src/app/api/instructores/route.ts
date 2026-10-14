@@ -1,5 +1,6 @@
-import { NextResponse } from "next/server";
 import { prisma } from "../../../lib/prisma";
+import { logger } from "@/src/lib/logger";
+import { ok, created, fail } from "@/src/lib/api-response";
 import { randomBytes, scryptSync } from "node:crypto";
 
 // GET: Obtener todos los instructores (Ya lo tenías)
@@ -22,10 +23,10 @@ export async function GET() {
     }));
 
     instructores.sort((a, b) => a.apellido.localeCompare(b.apellido));
-    return NextResponse.json(instructores);
+    return ok(instructores);
   } catch (error) {
-    console.error("Error al cargar instructores:", error);
-    return NextResponse.json({ error: "Error al cargar instructores" }, { status: 500 });
+    logger.error("GET /api/instructores", { error: error instanceof Error ? error.message : String(error) });
+    return fail("Error al cargar instructores", 500);
   }
 }
 
@@ -57,14 +58,13 @@ export async function POST(request: Request) {
       }
     });
 
-    return NextResponse.json({ message: "Instructor registrado exitosamente" }, { status: 201 });
+    return created({ message: "Instructor registrado exitosamente" });
   } catch (error: unknown) {
-    console.error("Error al registrar instructor:", error);
-    
     if (typeof error === 'object' && error !== null && 'code' in error && error.code === 'P2002') {
-      return NextResponse.json({ error: "El CI o Correo ya están registrados" }, { status: 400 });
+      return fail("El CI o Correo ya están registrados", 400);
     }
-    
-    return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 });
+
+    logger.error("POST /api/instructores", { error: error instanceof Error ? error.message : String(error) });
+    return fail("Error interno del servidor", 500);
   }
 }

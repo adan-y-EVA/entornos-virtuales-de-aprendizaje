@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Montserrat, Open_Sans } from "next/font/google";
+import { Toaster } from "sonner";
 import { AuthProvider } from "../context/AuthContext";
 import { AppShell } from "./layout/AppShell";
 import { verifySession } from "../lib/auth";
@@ -44,6 +45,7 @@ export default async function RootLayout({
         <AuthProvider initialUser={initialUser}>
           <AppShell>{children}</AppShell>
         </AuthProvider>
+        <Toaster position="bottom-right" richColors />
       </body>
     </html>
   );

@@ -1,5 +1,6 @@
-import { NextResponse } from "next/server";
 import { prisma } from "@/src/lib/prisma";
+import { logger } from "@/src/lib/logger";
+import { ok, fail } from "@/src/lib/api-response";
 
 export const dynamic = 'force-dynamic';
 
@@ -39,7 +40,7 @@ export async function GET() {
       estado: c.estado
     }));
 
-    return NextResponse.json({
+    return ok({
       estadisticas: {
         activos: totalCursos,
         preInscritos: preInscritos,
@@ -50,7 +51,7 @@ export async function GET() {
       certificados: ultimosCertificados
     });
   } catch (error) {
-    console.error("Error cargando dashboard:", error);
-    return NextResponse.json({ error: "Error interno" }, { status: 500 });
+    logger.error("GET /api/dashboard", { error: error instanceof Error ? error.message : String(error) });
+    return fail("Error interno", 500);
   }
 }
