@@ -53,8 +53,8 @@ export function CursoTable({ cursos, cargando, onEdit, onArchivar }: CursoTableP
                 <div className="text-text-muted">Aux: Bs. {Number(curso.costoAuxiliar).toFixed(2)}</div>
               </td>
               <td className="p-4">
-                <Badge variant={(curso.estado || 'activo') === 'activo' ? 'success' : 'default'}>
-                  {(curso.estado || 'activo') === 'activo' ? 'Activo' : 'Archivado'}
+                <Badge variant={(curso.estado || 'ACTIVO') === 'ACTIVO' ? 'success' : 'error'}>
+                  {(curso.estado || 'ACTIVO') === 'ACTIVO' ? 'Activo' : 'Cerrado'}
                 </Badge>
               </td>
               <td className="p-4 flex space-x-2">
@@ -62,10 +62,10 @@ export function CursoTable({ cursos, cargando, onEdit, onArchivar }: CursoTableP
                   <Edit size={18} />
                 </button>
                 <button 
-                  onClick={() => onArchivar(curso.codigo, curso.estado || 'activo')} 
-                  className={`p-1.5 rounded ${(curso.estado || 'activo') === 'activo' ? 'text-secondary hover:bg-red-50' : 'text-green-600 hover:bg-green-50'}`}
+                  onClick={() => onArchivar(curso.codigo, curso.estado || 'ACTIVO')} 
+                  className={`p-1.5 rounded ${(curso.estado || 'ACTIVO') === 'ACTIVO' ? 'text-secondary hover:bg-red-50' : 'text-green-600 hover:bg-green-50'}`}
                 >
-                  {(curso.estado || 'activo') === 'activo' ? <Archive size={18} /> : <ArchiveRestore size={18} />}
+                  {(curso.estado || 'ACTIVO') === 'ACTIVO' ? <Archive size={18} /> : <ArchiveRestore size={18} />}
                 </button>
               </td>
             </tr>

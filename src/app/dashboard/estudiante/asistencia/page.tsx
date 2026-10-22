@@ -58,7 +58,13 @@ export default function PaginaAsistenciaEstudiante() {
             <div className="bg-white border border-card-border rounded-xl px-5 py-3 shadow-sm">
               <p className="text-xs text-text-muted font-semibold">Certificados obtenidos</p>
               <p className="text-xl font-bold text-text-main">
-                {cursos.filter((curso) => curso.tipoCertificado).length}
+                {
+                  cursos.filter(
+                    (curso) =>
+                      curso.tipoCertificado === 'APROBADO' ||
+                      curso.tipoCertificado === 'ASISTENCIA',
+                  ).length
+                }
               </p>
             </div>
           </div>

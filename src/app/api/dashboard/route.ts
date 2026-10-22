@@ -14,7 +14,7 @@ export async function GET() {
       ultimosCursos,
       ultimosCertificados
     ] = await Promise.all([
-      prisma.curso.count({ where: { estado: 'activo' } }),
+      prisma.curso.count({ where: { estado: 'ACTIVO' } }),
       prisma.inscripcion.count({ where: { estado: 'INSCRITO', estadoPago: 'PENDIENTE' } }),
       prisma.estudiante.count(),
       prisma.certificado.count(),

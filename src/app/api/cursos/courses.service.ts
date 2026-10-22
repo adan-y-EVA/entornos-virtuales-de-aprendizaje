@@ -98,7 +98,7 @@ export const CursoService = {
         fechaFin: new Date(data.fechaFin),
         duracionHoras: data.duracionHoras,
         cuposMax: data.cuposMax,
-        estado: 'activo'
+        estado: 'ACTIVO'
       }
     });
   },
@@ -123,7 +123,7 @@ export const CursoService = {
   },
 
   toggleEstado: async (codigo: string, estadoActual: string) => {
-    const nuevoEstado = estadoActual === 'activo' ? 'archivado' : 'activo';
+    const nuevoEstado = estadoActual === 'ACTIVO' ? 'CERRADO' : 'ACTIVO';
     return await prisma.curso.update({
       where: { codigo },
       data: { estado: nuevoEstado }

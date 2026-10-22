@@ -10,7 +10,7 @@ import { CursoFormModal, type CursoFormData, type CursoData, type InstructorData
 
 export function GestionCursos() {
   const [cursos, setCursos] = useState<CursoData[]>([]);
-  const [filtroEstado, setFiltroEstado] = useState<'activo' | 'archivado' | 'todos'>('activo');
+  const [filtroEstado, setFiltroEstado] = useState<'ACTIVO' | 'CERRADO' | 'todos'>('ACTIVO');
   const [instructores, setInstructores] = useState<InstructorData[]>([])
   
   const [cargando, setCargando] = useState(true); 
@@ -71,7 +71,7 @@ export function GestionCursos() {
   const handleArchivar = async (codigo: string, estadoActual: string) => {
     const res = await call<{ curso: CursoData }>(`/api/cursos/${codigo}`, {
       method: 'PATCH',
-      body: { estadoActual: estadoActual || 'activo' },
+      body: { estadoActual: estadoActual || 'ACTIVO' },
     });
     if (!res?.ok) return;
 
@@ -80,7 +80,7 @@ export function GestionCursos() {
   };
 
   const cursosFiltrados = cursos.filter(c => 
-    filtroEstado === 'todos' || (c.estado || 'activo') === filtroEstado
+    filtroEstado === 'todos' || (c.estado || 'ACTIVO') === filtroEstado
   );
 
   return (
@@ -96,10 +96,10 @@ export function GestionCursos() {
           <select 
             className="border border-input-border rounded-lg px-3 py-2 font-secondary text-sm"
             value={filtroEstado}
-            onChange={(e) => setFiltroEstado(e.target.value as 'activo' | 'archivado' | 'todos')}
+            onChange={(e) => setFiltroEstado(e.target.value as 'ACTIVO' | 'CERRADO' | 'todos')}
           >
-            <option value="activo">Solo Activos</option>
-            <option value="archivado">Solo Archivados</option>
+            <option value="ACTIVO">Solo Activos</option>
+            <option value="CERRADO">Solo Cerrados</option>
             <option value="todos">Todos</option>
           </select>
           <Button onClick={handleNuevoCurso} icon={<PlusCircle size={18} />}>

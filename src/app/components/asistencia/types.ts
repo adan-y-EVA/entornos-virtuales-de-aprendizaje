@@ -51,6 +51,26 @@ export interface SesionDetalle {
   asistencias: AsistenciaEstudiante[];
 }
 
+export interface EstudianteCursoEstado {
+  ci: string;
+  nombres: string;
+  apellidos: string;
+  codigoSis: string;
+  notaFinal: number | null;
+  pctAsistencia: number;
+  presentes: number;
+  justificadas: number;
+  ausentes: number;
+  elegibleCertificado: boolean;
+  tipoCertificado: string | null;
+  codigoVerificacion: string | null;
+}
+
+export interface ResultadoNotas {
+  guardados: number;
+  restantes: number;
+}
+
 export interface ProgresoCurso {
   codigo: string;
   nombre: string;

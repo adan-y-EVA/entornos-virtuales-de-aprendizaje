@@ -3,6 +3,7 @@ import { Prisma } from "@/generated/prisma/client";
 import { ESTADOS_PAGO, esEstadoPago, type EstadoPago } from "@/src/lib/estados-pago";
 import { hashPassword } from "@/src/lib/auth";
 import { prisma } from "@/src/lib/prisma";
+import { crearAsistenciasParaInscripcion } from "@/src/lib/asistencia";
 
 export const COL = {
   ci: "ciEstudiante",
@@ -325,7 +326,7 @@ export async function registrarInscripcion(
   const montoQr = parsearMonto(datos.montoQr).monto;
 
   try {
-    return await prisma.$transaction(async (tx) => {
+    const resultado = await prisma.$transaction(async (tx) => {
       const cursos = await tx.$queryRaw<CursoRow[]>`
         SELECT codigo, cupos_max, fecha_ini::text AS fecha_ini
         FROM curso
@@ -417,6 +418,9 @@ export async function registrarInscripcion(
         estadoPago,
       };
     });
+
+    await crearAsistenciasParaInscripcion(resultado.ciEstudiante, datos.codigoCurso);
+    return resultado;
   } catch (error) {
     if (error instanceof ErrorInscripcion) throw error;
 

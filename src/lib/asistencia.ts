@@ -16,6 +16,9 @@ export const MAX_AUSENCIAS_PERMITIDAS = 3;
 /** Nota mínima para obtener certificado APROBADO. */
 export const NOTA_MINIMA_APROBACION = 70;
 
+/** Tipo provisional del certificado mientras la nota está en registro (se finaliza al emitir). */
+export const TIPO_CERT_PENDIENTE = "PENDIENTE";
+
 export class ErrorAsistencia extends Error {}
 
 export interface SesionResumen {
@@ -71,6 +74,8 @@ export interface EstudianteCursoEstado {
   justificadas: number;
   ausentes: number;
   elegibleCertificado: boolean;
+  tipoCertificado: string | null;
+  codigoVerificacion: string | null;
 }
 
 export interface EvaluacionCertificado {
@@ -102,6 +107,13 @@ function validarUsuarioSesion(sesionCurso: { ciInstructor: string }, usuario: Us
 function validarEstado(estado: string): asserts estado is EstadoAsistencia {
   if (!ESTADOS_ASISTENCIA.includes(estado as EstadoAsistencia)) {
     throw new ErrorAsistencia(`Estado de asistencia inválido: ${estado}`);
+  }
+}
+
+/** Verifica que el curso esté ACTIVO (permite modificaciones). */
+function validarCursoAbierto(curso: { estado: string }): void {
+  if (curso.estado !== "ACTIVO") {
+    throw new ErrorAsistencia("El curso está cerrado. No se pueden realizar modificaciones.");
   }
 }
 
@@ -242,12 +254,13 @@ export async function bulkUpdateAsistencia(
     where: { id: idSesion },
     select: {
       codigoCurso: true,
-      curso: { select: { ciInstructor: true } },
+      curso: { select: { ciInstructor: true, estado: true } },
     },
   });
 
   if (!sesion) throw new ErrorAsistencia("La sesión no existe.");
   validarUsuarioSesion(sesion.curso, usuario);
+  validarCursoAbierto(sesion.curso);
 
   for (const update of updates) validarEstado(update.estado);
 
@@ -464,7 +477,7 @@ export async function getEstudiantesCurso(
     }),
     prisma.certificado.findMany({
       where: { codigoCurso },
-      select: { ciEstudiante: true, notaFinal: true },
+      select: { ciEstudiante: true, notaFinal: true, tipo: true, codigoVerificacion: true },
     }),
     prisma.sesion.count({ where: { codigoCurso } }),
     prisma.asistencia.groupBy({
@@ -475,6 +488,8 @@ export async function getEstudiantesCurso(
   ]);
 
   const notas = new Map(certificados.map((c) => [c.ciEstudiante, c.notaFinal]));
+  const tipos = new Map(certificados.map((c) => [c.ciEstudiante, c.tipo]));
+  const codigos = new Map(certificados.map((c) => [c.ciEstudiante, c.codigoVerificacion]));
   const porEstudiante = new Map<string, Record<string, number>>();
   for (const fila of asistenciasPorEstudiante) {
     const actual = porEstudiante.get(fila.ciEstudiante) ?? {};
@@ -502,6 +517,215 @@ export async function getEstudiantesCurso(
       justificadas,
       ausentes,
       elegibleCertificado: ausentes <= MAX_AUSENCIAS_PERMITIDAS,
+      tipoCertificado: tipos.get(inscripcion.ciEstudiante) ?? null,
+      codigoVerificacion: codigos.get(inscripcion.ciEstudiante) ?? null,
     };
   });
+}
+
+/** Código de verificación único para un certificado (formato CERT-YYYY-XXXXXX). */
+async function generarCodigoVerificacion(): Promise<string> {
+  const anio = new Date().getFullYear();
+  for (let intento = 0; intento < 5; intento++) {
+    const sufijo = Math.random().toString(36).slice(2, 8).toUpperCase().padEnd(6, "0");
+    const codigo = `CERT-${anio}-${sufijo}`;
+    const existe = await prisma.certificado.findUnique({
+      where: { codigoVerificacion: codigo },
+      select: { id: true },
+    });
+    if (!existe) return codigo;
+  }
+  throw new ErrorAsistencia("No se pudo generar un código de verificación único.");
+}
+
+export interface NotaUpdate {
+  ci: string;
+  notaFinal: number;
+}
+
+export interface ResultadoNotas {
+  guardados: number;
+  restantes: number;
+}
+
+/**
+ * Guarda notas de un curso (crea certificados pendientes o actualiza los existentes).
+ * `restantes` = inscritos aún sin nota.
+ */
+export async function guardarNotas(
+  codigoCurso: string,
+  updates: NotaUpdate[],
+  usuario: Usuario,
+): Promise<ResultadoNotas> {
+  if (updates.length === 0) throw new ErrorAsistencia("No se recibieron notas para guardar.");
+
+  const curso = await prisma.curso.findUnique({
+    where: { codigo: codigoCurso },
+    select: { ciInstructor: true, codigo: true, estado: true },
+  });
+  if (!curso) throw new ErrorAsistencia("El curso no existe.");
+  validarUsuarioSesion(curso, usuario);
+  validarCursoAbierto(curso);
+
+  for (const update of updates) {
+    if (typeof update.ci !== "string" || update.ci.length === 0) {
+      throw new ErrorAsistencia("Estudiante inválido en la lista de notas.");
+    }
+    if (
+      typeof update.notaFinal !== "number" ||
+      !Number.isFinite(update.notaFinal) ||
+      update.notaFinal < 0 ||
+      update.notaFinal > 100
+    ) {
+      throw new ErrorAsistencia(
+        `Nota inválida para el estudiante ${update.ci}: debe estar entre 0 y 100.`,
+      );
+    }
+  }
+
+  const cis = updates.map((u) => u.ci);
+  const inscritos = await prisma.inscripcion.findMany({
+    where: { codigoCurso, ciEstudiante: { in: cis }, estado: "INSCRITO" },
+    select: { ciEstudiante: true },
+  });
+  const conjuntoInscritos = new Set(inscritos.map((i) => i.ciEstudiante));
+  const noInscrito = cis.find((ci) => !conjuntoInscritos.has(ci));
+  if (noInscrito) {
+    throw new ErrorAsistencia(`El estudiante ${noInscrito} no está inscrito en el curso.`);
+  }
+
+  const existentes = await prisma.certificado.findMany({
+    where: { codigoCurso, ciEstudiante: { in: cis } },
+    select: { ciEstudiante: true, tipo: true },
+  });
+  const existentePorCi = new Map(existentes.map((c) => [c.ciEstudiante, c]));
+
+  const operaciones = [];
+  for (const update of updates) {
+    const existente = existentePorCi.get(update.ci);
+    if (existente) {
+      const data: { notaFinal: number; tipo?: string } = { notaFinal: update.notaFinal };
+
+      // Certificado ya emitido: re-evaluar el tipo según la nueva nota (si el estudiante sigue habilitado).
+      if (existente.tipo !== TIPO_CERT_PENDIENTE) {
+        const estado = await calcularEstadoAsistencia(update.ci, codigoCurso);
+        if (estado.elegibleCertificado) {
+          data.tipo =
+            update.notaFinal >= NOTA_MINIMA_APROBACION ? "APROBADO" : "ASISTENCIA";
+        }
+      }
+
+      operaciones.push(
+        prisma.certificado.update({
+          where: { ciEstudiante_codigoCurso: { ciEstudiante: update.ci, codigoCurso } },
+          data,
+        }),
+      );
+    } else {
+      operaciones.push(
+        prisma.certificado.create({
+          data: {
+            codigoVerificacion: await generarCodigoVerificacion(),
+            ciEstudiante: update.ci,
+            codigoCurso,
+            fechaEmision: new Date(),
+            tipo: TIPO_CERT_PENDIENTE,
+            notaFinal: update.notaFinal,
+          },
+        }),
+      );
+    }
+  }
+  await prisma.$transaction(operaciones);
+
+  const [todosInscritos, conNota] = await Promise.all([
+    prisma.inscripcion.findMany({
+      where: { codigoCurso, estado: "INSCRITO" },
+      select: { ciEstudiante: true },
+    }),
+    prisma.certificado.findMany({
+      where: { codigoCurso, notaFinal: { not: null } },
+      select: { ciEstudiante: true },
+    }),
+  ]);
+  const conjuntoConNota = new Set(conNota.map((c) => c.ciEstudiante));
+  const restantes = todosInscritos.filter(
+    (i) => !conjuntoConNota.has(i.ciEstudiante),
+  ).length;
+
+  return { guardados: updates.length, restantes };
+}
+
+export interface ResultadoCierre {
+  codigo: string;
+  estado: string;
+}
+
+/**
+ * Cierra un curso (ACTIVO → CERRADO).
+ * Requiere que todos los estudiantes inscritos tengan nota registrada.
+ */
+export async function cerrarCurso(codigoCurso: string, usuario: Usuario): Promise<ResultadoCierre> {
+  const curso = await prisma.curso.findUnique({
+    where: { codigo: codigoCurso },
+    select: { ciInstructor: true, codigo: true, estado: true },
+  });
+  if (!curso) throw new ErrorAsistencia("El curso no existe.");
+  validarUsuarioSesion(curso, usuario);
+
+  if (curso.estado !== "ACTIVO") {
+    throw new ErrorAsistencia("El curso no está activo. Solo se pueden cerrar cursos activos.");
+  }
+
+  const [inscritos, conNota] = await Promise.all([
+    prisma.inscripcion.findMany({
+      where: { codigoCurso, estado: "INSCRITO" },
+      select: { ciEstudiante: true },
+    }),
+    prisma.certificado.findMany({
+      where: { codigoCurso, notaFinal: { not: null } },
+      select: { ciEstudiante: true },
+    }),
+  ]);
+  const conjuntoConNota = new Set(conNota.map((c) => c.ciEstudiante));
+  const faltantes = inscritos.filter((i) => !conjuntoConNota.has(i.ciEstudiante));
+  if (faltantes.length > 0) {
+    const ciEjemplo = faltantes.map((f) => f.ciEstudiante).join(", ");
+    throw new ErrorAsistencia(
+      `No se puede cerrar el curso: ${faltantes.length} estudiante(s) sin nota (CI: ${ciEjemplo}).`,
+    );
+  }
+
+  await prisma.curso.update({
+    where: { codigo: codigoCurso },
+    data: { estado: "CERRADO" },
+  });
+
+  return { codigo: codigoCurso, estado: "CERRADO" };
+}
+
+/**
+ * Reabre un curso (CERRADO → ACTIVO). Solo ADMIN.
+ */
+export async function reabrirCurso(codigoCurso: string, usuario: Usuario): Promise<ResultadoCierre> {
+  if (usuario.role !== "ADMIN") {
+    throw new ErrorAsistencia("Solo un administrador puede reabrir un curso.");
+  }
+
+  const curso = await prisma.curso.findUnique({
+    where: { codigo: codigoCurso },
+    select: { codigo: true, estado: true },
+  });
+  if (!curso) throw new ErrorAsistencia("El curso no existe.");
+
+  if (curso.estado !== "CERRADO") {
+    throw new ErrorAsistencia("El curso no está cerrado. Solo se pueden reabrir cursos cerrados.");
+  }
+
+  await prisma.curso.update({
+    where: { codigo: codigoCurso },
+    data: { estado: "ACTIVO" },
+  });
+
+  return { codigo: codigoCurso, estado: "ACTIVO" };
 }
