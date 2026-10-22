@@ -5,11 +5,15 @@ import Link from 'next/link';
 import { CheckCircle, Users } from 'lucide-react';
 import { useApi } from '@/src/hooks/useApi';
 import { Badge } from '../components/Badge';
+import { GradeEntry } from '../components/asistencia/GradeEntry';
 import { formatFecha, type CursoAsistencia } from '../components/asistencia/types';
+
+type Pestana = 'sesiones' | 'notas';
 
 export default function PaginaAsistencia() {
   const [cursos, setCursos] = useState<CursoAsistencia[]>([]);
   const [seleccionado, setSeleccionado] = useState<string | null>(null);
+  const [pestana, setPestana] = useState<Pestana>('sesiones');
   const [cargando, setCargando] = useState(true);
   const { call } = useApi();
 
@@ -26,6 +30,11 @@ export default function PaginaAsistencia() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     cargar();
   }, [cargar]);
+
+  const seleccionarCurso = (codigo: string) => {
+    setSeleccionado(codigo);
+    setPestana('sesiones');
+  };
 
   const cursoActual = useMemo(
     () => cursos.find((curso) => curso.codigo === seleccionado) ?? null,
@@ -59,7 +68,7 @@ export default function PaginaAsistencia() {
               return (
                 <button
                   key={curso.codigo}
-                  onClick={() => setSeleccionado(curso.codigo)}
+                  onClick={() => seleccionarCurso(curso.codigo)}
                   className={`min-w-[240px] text-left p-4 rounded-xl border transition-colors ${
                     activo
                       ? 'bg-primary text-white border-primary shadow-sm'
@@ -93,27 +102,63 @@ export default function PaginaAsistencia() {
             })}
           </div>
 
-          {/* Tabla de sesiones del curso seleccionado */}
-          <div className="bg-white border border-card-border rounded-xl shadow-sm overflow-hidden flex-1">
-            <div className="p-4 border-b border-card-border bg-card-bg flex justify-between items-center">
-              <div>
-                <h2 className="font-primary font-bold text-text-main">
-                  Sesiones {cursoActual ? `- ${cursoActual.nombre}` : ''}
-                </h2>
-                {cursoActual && (
-                  <p className="text-text-muted text-xs mt-0.5">
-                    {formatFecha(cursoActual.fechaIni)} - {formatFecha(cursoActual.fechaFin)} &middot;{' '}
-                    <Badge
-                      variant={(cursoActual.estado || 'activo') === 'activo' ? 'success' : 'default'}
-                    >
-                      {(cursoActual.estado || 'activo') === 'activo' ? 'Activo' : 'Archivado'}
-                    </Badge>
-                  </p>
-                )}
+          {/* Panel del curso seleccionado: sesiones / notas */}
+          <div className="bg-white border border-card-border rounded-xl shadow-sm overflow-hidden flex-1 flex flex-col">
+            <div className="bg-card-bg border-b border-card-border">
+              <div className="p-4 flex flex-wrap justify-between items-center gap-3">
+                <div>
+                  <h2 className="font-primary font-bold text-text-main">
+                    {pestana === 'sesiones' ? 'Sesiones' : 'Notas'}{' '}
+                    {cursoActual ? `- ${cursoActual.nombre}` : ''}
+                  </h2>
+                  {cursoActual && (
+                    <p className="text-text-muted text-xs mt-0.5">
+                      {formatFecha(cursoActual.fechaIni)} - {formatFecha(cursoActual.fechaFin)}{' '}
+                      &middot;{' '}
+                      <Badge
+                        variant={
+                          (cursoActual.estado || 'ACTIVO') === 'ACTIVO' ? 'success' : 'error'
+                        }
+                      >
+                        {(cursoActual.estado || 'ACTIVO') === 'ACTIVO' ? 'Activo' : 'Cerrado'}
+                      </Badge>
+                    </p>
+                  )}
+                </div>
+
+                {/* Pestañas */}
+                <div className="flex gap-1 rounded-lg border border-input-border bg-white p-1">
+                  <button
+                    onClick={() => setPestana('sesiones')}
+                    className={`px-4 py-1.5 rounded-md text-xs font-semibold transition-colors ${
+                      pestana === 'sesiones'
+                        ? 'bg-primary text-white'
+                        : 'text-text-muted hover:bg-gray-100'
+                    }`}
+                  >
+                    Sesiones
+                  </button>
+                  <button
+                    onClick={() => setPestana('notas')}
+                    className={`px-4 py-1.5 rounded-md text-xs font-semibold transition-colors ${
+                      pestana === 'notas'
+                        ? 'bg-primary text-white'
+                        : 'text-text-muted hover:bg-gray-100'
+                    }`}
+                  >
+                    Notas
+                  </button>
+                </div>
               </div>
             </div>
 
-            {cursoActual && cursoActual.sesiones.length === 0 ? (
+            {pestana === 'notas' ? (
+              cursoActual ? (
+                <div className="p-4">
+                  <GradeEntry key={cursoActual.codigo} codigoCurso={cursoActual.codigo} />
+                </div>
+              ) : null
+            ) : cursoActual && cursoActual.sesiones.length === 0 ? (
               <div className="p-8 text-center text-text-muted">
                 Este curso no tiene sesiones registradas.
               </div>

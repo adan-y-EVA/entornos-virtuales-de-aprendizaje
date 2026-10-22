@@ -199,8 +199,6 @@ const pagosPorInscripcion: { montoFisico: string; montoQr: string; fecha: string
   { montoFisico: "100.00", montoQr: "0.00", fecha: "2025-07-30" },
 ];
 
-const indexesAsistencia = [1, 2, 3, 4, 5, 7, 8, 9, 10, 12];
-
 const certificados = [
   {
     codigoVerificacion: "CERT-2025-0001",
@@ -209,16 +207,14 @@ const certificados = [
     fechaEmision: "2025-12-19",
     tipo: "APROBADO",
     notaFinal: "78.00",
-    pctAsistencia: "100.00",
   },
   {
     codigoVerificacion: "CERT-2025-0002",
     estudiante: 2,
     curso: 3,
     fechaEmision: "2025-12-19",
-    tipo: "APROBADO",
+    tipo: "ASISTENCIA",
     notaFinal: "64.50",
-    pctAsistencia: "80.00",
   },
   {
     codigoVerificacion: "CERT-2025-0003",
@@ -227,7 +223,6 @@ const certificados = [
     fechaEmision: "2025-12-19",
     tipo: "ASISTENCIA",
     notaFinal: null,
-    pctAsistencia: "75.00",
   },
 ];
 
@@ -322,7 +317,7 @@ async function main() {
         fechaIni: soloFecha(curso.fechaIni),
         fechaFin: soloFecha(curso.fechaFin),
         duracionHoras: curso.duracionHoras,
-        estado: "activo",
+        estado: "ACTIVO",
         cuposMax: curso.cuposMax,
       },
     });
@@ -378,34 +373,53 @@ async function main() {
   }
 
   // 4. CREAMOS ASISTENCIAS Y CERTIFICADOS
-  for (const indice of indexesAsistencia) {
-    const inscripcion = inscripciones[indice];
+  // Generar asistencia para todas las inscripciones INSCRITO (no CANCELADO)
+  const asistenciaPorEstudianteCurso = new Map<string, { presentes: number; total: number }>();
+
+  for (const [indice, inscripcion] of inscripciones.entries()) {
+    if (inscripcion.estado !== EstadoInscripcion.INSCRITO) continue;
+
+    const codigoCurso = cursos[inscripcion.curso].codigo;
+    const ciEstudiante = estudiantes[inscripcion.estudiante].ci;
     const sesiones = await prisma.sesion.findMany({
-      where: { codigoCurso: cursos[inscripcion.curso].codigo },
+      where: { codigoCurso },
       orderBy: { fecha: "asc" },
     });
+
+    let presentes = 0;
     for (const sesion of sesiones) {
       const presente = indice % 4 !== 3;
+      if (presente) presentes++;
       await prisma.asistencia.create({
         data: {
           idSesion: sesion.id,
-          ciEstudiante: estudiantes[inscripcion.estudiante].ci,
+          ciEstudiante,
           estado: presente ? "PRESENTE" : "AUSENTE",
         },
       });
     }
+
+    const clave = `${ciEstudiante}:${codigoCurso}`;
+    asistenciaPorEstudianteCurso.set(clave, { presentes, total: sesiones.length });
   }
 
   for (const certificado of certificados) {
+    const ciEstudiante = estudiantes[certificado.estudiante].ci;
+    const codigoCurso = cursos[certificado.curso].codigo;
+    const asistencia = asistenciaPorEstudianteCurso.get(`${ciEstudiante}:${codigoCurso}`);
+    const pct = asistencia && asistencia.total > 0
+      ? Math.round((asistencia.presentes / asistencia.total) * 10000) / 100
+      : 0;
+
     await prisma.certificado.create({
       data: {
         codigoVerificacion: certificado.codigoVerificacion,
-        ciEstudiante: estudiantes[certificado.estudiante].ci,
-        codigoCurso: cursos[certificado.curso].codigo,
+        ciEstudiante,
+        codigoCurso,
         fechaEmision: soloFecha(certificado.fechaEmision),
         tipo: certificado.tipo,
         notaFinal: certificado.notaFinal,
-        pctAsistencia: certificado.pctAsistencia,
+        pctAsistencia: pct.toFixed(2),
       },
     });
   }

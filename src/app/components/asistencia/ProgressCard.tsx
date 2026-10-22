@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Calendar, CheckCircle, GraduationCap, User } from 'lucide-react';
+import { Calendar, CheckCircle, Download, GraduationCap, User } from 'lucide-react';
 import { formatFecha, type ProgresoCurso } from './types';
 
 function BadgeCertificado({ curso }: { curso: ProgresoCurso }) {
@@ -122,6 +122,19 @@ export function ProgressCard({ curso }: { curso: ProgresoCurso }) {
           </span>
         )}
       </div>
+
+      {/* Descarga de certificado emitido */}
+      {(curso.tipoCertificado === 'APROBADO' || curso.tipoCertificado === 'ASISTENCIA') &&
+        curso.codigoVerificacion && (
+          <a
+            href={`/api/asistencia/certificado/${curso.codigoVerificacion}/pdf`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-primary text-white text-xs font-semibold hover:bg-opacity-90 transition-colors"
+          >
+            <Download size={14} /> Descargar certificado
+          </a>
+        )}
     </div>
   );
 }

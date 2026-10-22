@@ -79,11 +79,16 @@ model Curso {
   inscripciones Inscripcion[]
   sesiones      Sesion[]
   certificados  Certificado[]
-  estado        String        @default("activo") @db.VarChar(20)
+  estado        EstadoCurso   @default(ACTIVO)
 
   @@index([ciInstructor])
   @@index([fechaIni])
   @@map("curso")
+}
+
+enum EstadoCurso {
+  ACTIVO
+  CERRADO
 }
 
 model Ambiente {

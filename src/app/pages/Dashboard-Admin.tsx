@@ -144,7 +144,7 @@ export default function DashboardView() {
                         </td>
                         <td className="p-4 text-text-main text-sm">{curso.instructor}</td>
                         <td className="p-4">
-                          <Badge variant={curso.estado === 'activo' ? 'success' : 'warning'}>
+                          <Badge variant={curso.estado === 'ACTIVO' ? 'success' : 'warning'}>
                             {curso.numInscritos} Inscritos
                           </Badge>
                         </td>

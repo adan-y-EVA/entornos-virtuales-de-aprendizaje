@@ -2,8 +2,8 @@ import { NextResponse, type NextRequest } from "next/server";
 import { decrypt, SESSION_COOKIE, type Rol } from "./lib/auth";
 import { unauthorized, forbidden } from "./lib/api-response";
 
-const PUBLIC_ROUTES = ["/login", "/register"];
-const PUBLIC_API = ["/api/auth/login", "/api/auth/logout"];
+const PUBLIC_ROUTES = ["/login", "/register", "/certificado"];
+const PUBLIC_API = ["/api/auth/login", "/api/auth/logout", "/api/asistencia/certificado"];
 
 const DEFAULT_HOME: Record<Rol, string> = {
   ADMIN: "/",
@@ -17,7 +17,7 @@ const ROUTE_ROLES: Record<string, Rol[]> = {
   "/cursos": ["ADMIN", "INSTRUCTOR"],
   "/inscripciones": ["ADMIN", "INSTRUCTOR"],
   "/asistencia": ["ADMIN", "INSTRUCTOR"],
-  "/certificados": ["ADMIN", "INSTRUCTOR"],
+  "/mis-cursos": ["ADMIN", "INSTRUCTOR"],
   "/instructores": ["ADMIN"],
 };
 
@@ -39,13 +39,18 @@ export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const isApi = pathname.startsWith("/api");
 
-  if (PUBLIC_API.includes(pathname)) {
-    return NextResponse.next();
-  }
+  const isPublicApi =
+    PUBLIC_API.includes(pathname) ||
+    pathname.startsWith("/api/asistencia/certificado/");
 
   const isPublic = PUBLIC_ROUTES.some(
     (route) => pathname === route || pathname.startsWith(`${route}/`),
   );
+
+  // APIs públicas: sin sesión ni verificación de roles.
+  if (isPublicApi) {
+    return NextResponse.next();
+  }
 
   const session = await decrypt(request.cookies.get(SESSION_COOKIE)?.value);
 

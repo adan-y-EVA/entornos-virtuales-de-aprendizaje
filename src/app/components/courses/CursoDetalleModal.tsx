@@ -119,7 +119,7 @@ export function CursoDetalleModal({ codigo, onClose }: CursoDetalleModalProps) {
             <>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <Dato etiqueta="Estado">
-                  <Badge variant={curso.estado === 'activo' ? 'success' : 'default'}>{curso.estado}</Badge>
+                  <Badge variant={curso.estado === 'ACTIVO' ? 'success' : 'error'}>{curso.estado}</Badge>
                 </Dato>
                 <Dato etiqueta="Grupo">{curso.grupo}</Dato>
                 <Dato etiqueta="Nivel">{curso.nivel}</Dato>
