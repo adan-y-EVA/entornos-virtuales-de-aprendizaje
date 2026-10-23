@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { CursoService } from "../courses.service";
+import { CursoService, ErrorValidacionCurso } from "../courses.service";
 import { logger } from "@/src/lib/logger";
 import { ok, fail, notFound } from "@/src/lib/api-response";
 
@@ -27,6 +27,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
     return ok({ curso: cursoActualizado });
   } catch (error) {
+    if (error instanceof ErrorValidacionCurso) return fail(error.message, 400);
     logger.warn("PUT /api/cursos/[codigo]", { error: error instanceof Error ? error.message : String(error) });
     return fail("No se pudo actualizar el curso", 400);
   }
