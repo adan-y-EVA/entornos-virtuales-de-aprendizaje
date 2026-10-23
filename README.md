@@ -104,7 +104,8 @@ Los errores de validacion responden `400` o `409` con `{ "error": "descripcion",
 ### Reglas de negocio
 
 - El CI identifica al estudiante: si no existe, se crean `usuario` y `estudiante` con `codigoSis` generado como `SIS-<CI>`.
-- Solo se acepta la inscripcion si hoy es **menor o igual** a `curso.fecha_ini`.
+- Solo se acepta la inscripcion si hoy es **menor o igual** a la fecha limite (`curso.fecha_limite_inscripcion`, o `curso.fecha_ini` si esta vacia).
+- No se aceptan inscripciones en cursos con `estado_apertura = CERRADO`.
 - `curso.cupos_max = 0` significa sin limite; si es mayor a 0, no se supera ese cupo.
 - El cupo cuenta solo inscripciones con `estado = INSCRITO`; las `CANCELADO` no ocupan lugar.
 - No se puede inscribir dos veces al mismo estudiante en el mismo curso.
@@ -137,6 +138,35 @@ La respuesta trae el detalle fila por fila, incluyendo las que si se procesaron:
 ```
 
 `fila` corresponde a la fila del archivo tal como se ve en Excel, contando el encabezado como fila 1. Las filas invalidas no bloquean a las validas. Maximo 5000 filas por archivo.
+
+## Apertura de cursos
+
+Cerca de la fecha limite de inscripcion el instructor decide si el curso se dicta segun `curso.cupos_min`.
+La logica esta en `src/lib/apertura.ts`.
+
+| Campo de `curso` | Uso |
+| --- | --- |
+| `cupos_min` | Minimo de inscritos para abrir (0 = sin minimo) |
+| `fecha_limite_inscripcion` | Ultimo dia de inscripcion (vacio = `fecha_ini`) |
+| `codigo_materia` | Agrupa los grupos de una misma materia; por defecto es el propio `codigo` |
+| `estado_apertura` | `PENDIENTE` → `ABIERTO` o `CERRADO`. Es independiente de `estado`, que marca el cierre por notas |
+
+Flujo:
+
+1. Los cursos `PENDIENTE` cuya fecha limite cae en los proximos 3 dias (o ya vencio) aparecen en el panel de inicio y con un boton en `/cursos`.
+2. **Abrir**: solo si inscritos ≥ `cupos_min`.
+3. **Cerrar**: solo si inscritos < `cupos_min`. Cada estudiante se mueve al grupo elegido (misma `codigo_materia`, conservando su pago) o, si no hay grupo o se quedo sin cupo, su inscripcion pasa a `CANCELADO`. Todos reciben una notificacion, que ven en su panel.
+
+| Endpoint | Que hace |
+| --- | --- |
+| `GET /api/cursos/por-revisar?dias=3` | Cursos pendientes de revisar (instructor: los suyos; admin: todos) |
+| `GET /api/cursos/[codigo]/grupos-alternativos` | Otros grupos de la misma materia con sus cupos libres |
+| `POST /api/cursos/[codigo]/abrir` | `PENDIENTE` → `ABIERTO` |
+| `POST /api/cursos/[codigo]/cerrar-cupo` | Body `{ "codigoDestino": "INF-210-B" \| null, "reasignaciones": { "<ci>": "<codigo>" \| null } }` |
+| `GET /api/notificaciones` | Notificaciones del usuario de la sesion |
+| `PATCH /api/notificaciones/[id]` | Marca una notificacion propia como leida |
+
+La seed crea el escenario con fechas relativas a hoy: `INF-210-A` (no alcanza el minimo, se cierra y mueve a `INF-210-B`) e `INF-220` (alcanza el minimo, se abre). Ambos son de `mquispe@umss.edu.bo`.
 
 ## Getting Started
 

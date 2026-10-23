@@ -15,6 +15,8 @@ export interface CursoOption {
   grupo: string;
   nivel: string;
   fechaIni: string;
+  fechaLimite: string;
+  cerradoPorCupo: boolean;
   cuposMax: number;
   inscritos: number;
   abiertos: boolean;
@@ -201,12 +203,13 @@ export default function DashboardInscripciones({
           </select>
           {curso && (
             <p className="text-sm text-text-muted mt-2">
-              Inicio: {curso.fechaIni} • Inscritos: {curso.inscritos}
+              Inicio: {curso.fechaIni} • Límite de inscripción: {curso.fechaLimite} • Inscritos: {curso.inscritos}
               {curso.cuposMax > 0 ? ` de ${curso.cuposMax}` : ' (sin límite de cupos)'}
               {curso.cuposMax > 0
                 ? ` • Quedan ${Math.max(curso.cuposMax - curso.inscritos, 0)} cupos`
                 : ''}
-              {!curso.abiertos && ' • Inscripción cerrada'}
+              {!curso.abiertos &&
+                (curso.cerradoPorCupo ? ' • Cerrado por no alcanzar el mínimo' : ' • Inscripción cerrada')}
             </p>
           )}
         </div>

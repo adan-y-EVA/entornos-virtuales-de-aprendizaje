@@ -69,6 +69,8 @@ type CursoRow = {
   codigo: string;
   cupos_max: number;
   fecha_ini: string;
+  fecha_limite: string;
+  estado_apertura: "PENDIENTE" | "ABIERTO" | "CERRADO";
 };
 
 function hoyLocal(): string {
@@ -84,6 +86,8 @@ export interface CursoParaInscripcion {
   grupo: string;
   nivel: string;
   fechaIni: string;
+  fechaLimite: string;
+  cerradoPorCupo: boolean;
   cuposMax: number;
   inscritos: number;
   abiertos: boolean;
@@ -103,6 +107,8 @@ export async function obtenerCurso(
       cuposMax: true,
       numInscritos: true,
       fechaIni: true,
+      fechaLimiteInscripcion: true,
+      estadoApertura: true,
       costoExterno: true,
       costoUmss: true,
       costoAuxiliar: true,
@@ -114,6 +120,8 @@ export async function obtenerCurso(
   const inscritos = await prisma.inscripcion.count({
     where: { codigoCurso: curso.codigo, estado: "INSCRITO" },
   });
+  const fechaLimite = (curso.fechaLimiteInscripcion ?? curso.fechaIni).toISOString().slice(0, 10);
+  const cerradoPorCupo = curso.estadoApertura === "CERRADO";
 
   return {
     codigo: curso.codigo,
@@ -123,7 +131,9 @@ export async function obtenerCurso(
     cuposMax: curso.cuposMax,
     inscritos,
     fechaIni: curso.fechaIni.toISOString().slice(0, 10),
-    abiertos: hoyLocal() <= curso.fechaIni.toISOString().slice(0, 10),
+    fechaLimite,
+    cerradoPorCupo,
+    abiertos: !cerradoPorCupo && hoyLocal() <= fechaLimite,
     costos: {
       EXTERNO: Number(curso.costoExterno),
       UMSS: Number(curso.costoUmss),
@@ -328,7 +338,9 @@ export async function registrarInscripcion(
   try {
     const resultado = await prisma.$transaction(async (tx) => {
       const cursos = await tx.$queryRaw<CursoRow[]>`
-        SELECT codigo, cupos_max, fecha_ini::text AS fecha_ini
+        SELECT codigo, cupos_max, fecha_ini::text AS fecha_ini,
+               COALESCE(fecha_limite_inscripcion, fecha_ini)::text AS fecha_limite,
+               estado_apertura::text AS estado_apertura
         FROM curso
         WHERE codigo = ${datos.codigoCurso}
         FOR UPDATE
@@ -342,11 +354,18 @@ export async function registrarInscripcion(
         );
       }
 
+      if (curso.estado_apertura === "CERRADO") {
+        throw new ErrorInscripcion(
+          COL.codigoCurso,
+          `El curso ${curso.codigo} fue cerrado por no alcanzar el mínimo de inscritos.`,
+        );
+      }
+
       const hoy = hoyLocal();
-      if (hoy > curso.fecha_ini) {
+      if (hoy > curso.fecha_limite) {
         throw new ErrorInscripcion(
           COL.fechaInicio,
-          `La inscripción al curso ${curso.codigo} se cerró: la fecha de inicio (${curso.fecha_ini}) ya pasó.`,
+          `La inscripción al curso ${curso.codigo} se cerró: la fecha límite (${curso.fecha_limite}) ya pasó.`,
         );
       }
 

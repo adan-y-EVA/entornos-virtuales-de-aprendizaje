@@ -18,13 +18,26 @@ const cursoSchema = z.object({
   fechaFin: z.string().min(1, "Requerido"),
   duracionHoras: z.number().min(1, "Mínimo 1 hora"),
   cuposMax: z.number().min(0, "Los cupos no pueden ser negativos"),
+  cuposMin: z.number().int("Debe ser entero").min(0, "No puede ser negativo"),
+  fechaLimiteInscripcion: z.string(),
+  codigoMateria: z.string().max(20, "Máximo 20 caracteres"),
+}).superRefine((data, ctx) => {
+  if (data.cuposMax > 0 && data.cuposMin > data.cuposMax) {
+    ctx.addIssue({ code: 'custom', path: ['cuposMin'], message: 'No puede superar el cupo máximo' });
+  }
+  if (data.fechaLimiteInscripcion && data.fechaIni && data.fechaLimiteInscripcion > data.fechaIni) {
+    ctx.addIssue({ code: 'custom', path: ['fechaLimiteInscripcion'], message: 'Debe ser antes del inicio' });
+  }
 });
 
 export type CursoFormData = z.infer<typeof cursoSchema>;
 
-export interface CursoData extends CursoFormData {
+export interface CursoData extends Omit<CursoFormData, 'fechaLimiteInscripcion' | 'codigoMateria'> {
   estado?: string;
+  estadoApertura?: 'PENDIENTE' | 'ABIERTO' | 'CERRADO';
   numInscritos?: number;
+  fechaLimiteInscripcion?: string | null;
+  codigoMateria?: string | null;
 }
 
 export interface InstructorData {
@@ -54,11 +67,16 @@ export function CursoFormModal({ isOpen, onClose, onSubmit, cursoEditando, instr
         costoUmss: Number(cursoEditando.costoUmss),
         costoAuxiliar: Number(cursoEditando.costoAuxiliar),
         cuposMax: Number(cursoEditando.cuposMax || 0), // Agregado para recuperar el valor al editar
+        cuposMin: Number(cursoEditando.cuposMin || 0),
+        fechaLimiteInscripcion: cursoEditando.fechaLimiteInscripcion
+          ? new Date(cursoEditando.fechaLimiteInscripcion).toISOString().split('T')[0]
+          : '',
+        codigoMateria: cursoEditando.codigoMateria ?? '',
         fechaIni: new Date(cursoEditando.fechaIni).toISOString().split('T')[0],
         fechaFin: new Date(cursoEditando.fechaFin).toISOString().split('T')[0],
       });
     } else {
-      reset({ codigo: '', ciInstructor: '', nombre: '', grupo: '', nivel: '', costoExterno: 0, costoUmss: 0, costoAuxiliar: 0, duracionHoras: 0, cuposMax: 0, fechaIni: '', fechaFin: '' });
+      reset({ codigo: '', ciInstructor: '', nombre: '', grupo: '', nivel: '', costoExterno: 0, costoUmss: 0, costoAuxiliar: 0, duracionHoras: 0, cuposMax: 0, cuposMin: 0, fechaLimiteInscripcion: '', codigoMateria: '', fechaIni: '', fechaFin: '' });
     }
   }, [cursoEditando, reset, isOpen]);
 
@@ -162,6 +180,32 @@ export function CursoFormModal({ isOpen, onClose, onSubmit, cursoEditando, instr
               </label>
               <input type="number" min={0} {...register('cuposMax', { valueAsNumber: true })} className="w-full border border-input-border rounded-lg px-3 py-2 text-sm" />
               {errors.cuposMax && <p className="text-secondary text-xs">{errors.cuposMax.message}</p>}
+            </div>
+          </div>
+
+          <div className="pt-4 border-t border-card-border">
+            <h4 className="text-sm font-bold text-text-main mb-1">Apertura del curso</h4>
+            <p className="text-xs text-text-muted mb-3">
+              Al llegar la fecha límite revisas si el curso alcanza el mínimo para abrirlo o cerrarlo.
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-1">
+                <label className="text-sm font-semibold text-text-main">Mínimo de inscritos (0 = sin mínimo)</label>
+                <input type="number" min={0} {...register('cuposMin', { valueAsNumber: true })} className="w-full border border-input-border rounded-lg px-3 py-2 text-sm" />
+                {errors.cuposMin && <p className="text-secondary text-xs">{errors.cuposMin.message}</p>}
+              </div>
+              <div className="space-y-1">
+                <label className="text-sm font-semibold text-text-main">Fecha límite de inscripción</label>
+                <input type="date" {...register('fechaLimiteInscripcion')} className="w-full border border-input-border rounded-lg px-3 py-2 text-sm" />
+                <p className="text-text-muted text-xs">Vacío = fecha de inicio.</p>
+                {errors.fechaLimiteInscripcion && <p className="text-secondary text-xs">{errors.fechaLimiteInscripcion.message}</p>}
+              </div>
+              <div className="space-y-1">
+                <label className="text-sm font-semibold text-text-main">Código de materia</label>
+                <input {...register('codigoMateria')} placeholder="Ej. INF-101" className="w-full border border-input-border rounded-lg px-3 py-2 text-sm" />
+                <p className="text-text-muted text-xs">Usa el mismo en todos los grupos de la materia.</p>
+                {errors.codigoMateria && <p className="text-secondary text-xs">{errors.codigoMateria.message}</p>}
+              </div>
             </div>
           </div>
 

@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { useApi } from '@/src/hooks/useApi';
 import { Button } from '../components/Button';
 import { CursoTable } from '../components/courses/CursoTable';
+import { RevisionAperturaModal } from '../components/apertura/RevisionAperturaModal';
 import { CursoFormModal, type CursoFormData, type CursoData, type InstructorData } from '../components/courses/CursoModal'; 
 
 export function GestionCursos() {
@@ -17,6 +18,7 @@ export function GestionCursos() {
   
   const [modalOpen, setModalOpen] = useState(false);
   const [cursoEditando, setCursoEditando] = useState<CursoData | null>(null);
+  const [revisando, setRevisando] = useState<string | null>(null);
 
   const { call } = useApi();
 
@@ -114,7 +116,17 @@ export function GestionCursos() {
         cargando={cargando} 
         onEdit={handleEditar} 
         onArchivar={handleArchivar} 
+        onRevisarApertura={setRevisando}
       />
+
+      {revisando && (
+        <RevisionAperturaModal
+          key={revisando}
+          codigo={revisando}
+          onClose={() => setRevisando(null)}
+          onRevisado={refetchCursos}
+        />
+      )}
 
       {/* Componente Modal (Presentacional + Form) */}
       <CursoFormModal 

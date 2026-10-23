@@ -5,6 +5,7 @@ import { Search, BookOpen, Calendar, Award, Clock, CheckCircle } from 'lucide-re
 import { Button } from '../components/Button';
 import { Badge } from '../components/Badge';
 import { StatCard } from '../components/StatCard';
+import { NotificacionesPanel } from '../components/notificaciones/NotificacionesPanel';
 
 export interface CursoInscrito {
   codigo: string;
@@ -68,6 +69,8 @@ export default function DashboardStudentView({
       </header>
 
       <main className="p-6 flex-1 w-full overflow-x-hidden">
+        <NotificacionesPanel />
+
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8 w-full">
           <StatCard
             title="Cursos Activos"
