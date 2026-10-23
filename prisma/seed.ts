@@ -22,6 +22,17 @@ function soloFecha(iso: string): Date {
   return new Date(`${iso}T00:00:00.000Z`);
 }
 
+/** Fecha (YYYY-MM-DD) a `dias` de hoy, para que el escenario de apertura siempre este vigente. */
+function enDias(dias: number): string {
+  const fecha = new Date();
+  fecha.setDate(fecha.getDate() + dias);
+  const mes = String(fecha.getMonth() + 1).padStart(2, "0");
+  const dia = String(fecha.getDate()).padStart(2, "0");
+  return `${fecha.getFullYear()}-${mes}-${dia}`;
+}
+
+const HOY = enDias(0);
+
 function hora(iso: string): Date {
   return new Date(`1970-01-01T${iso}:00.000Z`);
 }
@@ -82,7 +93,25 @@ const administrador = {
   email: "rmamani@umss.edu.bo",
 };
 
-const cursos = [
+interface CursoSemilla {
+  codigo: string;
+  ciInstructor: string;
+  nombre: string;
+  grupo: string;
+  nivel: string;
+  costoExterno: string;
+  costoUmss: string;
+  costoAuxiliar: string;
+  fechaIni: string;
+  fechaFin: string;
+  duracionHoras: number;
+  cuposMax: number;
+  cuposMin?: number;
+  fechaLimiteInscripcion?: string;
+  codigoMateria?: string;
+}
+
+const cursos: CursoSemilla[] = [
   {
     codigo: "INF-101",
     ciInstructor: "10000001",
@@ -139,6 +168,61 @@ const cursos = [
     duracionHoras: 32,
     cuposMax: 0,
   },
+  // Escenario de apertura: inscripciones por cerrar.
+  // INF-210-A no alcanza el minimo -> el instructor lo cierra y mueve a sus
+  // estudiantes al grupo B (misma materia INF-210).
+  {
+    codigo: "INF-210-A",
+    ciInstructor: "10000001",
+    nombre: "Programacion Web",
+    grupo: "A",
+    nivel: "Medio",
+    costoExterno: "120.00",
+    costoUmss: "100.00",
+    costoAuxiliar: "50.00",
+    fechaIni: enDias(5),
+    fechaFin: enDias(60),
+    duracionHoras: 40,
+    cuposMax: 25,
+    cuposMin: 5,
+    fechaLimiteInscripcion: enDias(2),
+    codigoMateria: "INF-210",
+  },
+  {
+    codigo: "INF-210-B",
+    ciInstructor: "10000002",
+    nombre: "Programacion Web",
+    grupo: "B",
+    nivel: "Medio",
+    costoExterno: "120.00",
+    costoUmss: "100.00",
+    costoAuxiliar: "50.00",
+    fechaIni: enDias(7),
+    fechaFin: enDias(62),
+    duracionHoras: 40,
+    cuposMax: 25,
+    cuposMin: 3,
+    fechaLimiteInscripcion: enDias(6),
+    codigoMateria: "INF-210",
+  },
+  // INF-220 alcanza el minimo -> el instructor lo abre.
+  {
+    codigo: "INF-220",
+    ciInstructor: "10000001",
+    nombre: "Seguridad Informatica",
+    grupo: "A",
+    nivel: "Avanzado",
+    costoExterno: "150.00",
+    costoUmss: "120.00",
+    costoAuxiliar: "60.00",
+    fechaIni: enDias(4),
+    fechaFin: enDias(50),
+    duracionHoras: 32,
+    cuposMax: 20,
+    cuposMin: 3,
+    fechaLimiteInscripcion: enDias(1),
+    codigoMateria: "INF-220",
+  },
 ];
 
 const sesionesPorCurso: Record<string, { ambiente: number; fecha: string; inicio: string; fin: string }[]> = {
@@ -158,6 +242,18 @@ const sesionesPorCurso: Record<string, { ambiente: number; fecha: string; inicio
   "INF-150": [
     { ambiente: 2, fecha: "2025-08-04", inicio: "08:00", fin: "10:00" },
     { ambiente: 2, fecha: "2025-08-11", inicio: "08:00", fin: "10:00" },
+  ],
+  "INF-210-A": [
+    { ambiente: 0, fecha: enDias(5), inicio: "18:00", fin: "20:00" },
+    { ambiente: 0, fecha: enDias(12), inicio: "18:00", fin: "20:00" },
+  ],
+  "INF-210-B": [
+    { ambiente: 1, fecha: enDias(7), inicio: "18:00", fin: "20:00" },
+    { ambiente: 1, fecha: enDias(14), inicio: "18:00", fin: "20:00" },
+  ],
+  "INF-220": [
+    { ambiente: 3, fecha: enDias(4), inicio: "10:00", fin: "12:00" },
+    { ambiente: 3, fecha: enDias(11), inicio: "10:00", fin: "12:00" },
   ],
 };
 const inscripciones: { 
@@ -181,6 +277,15 @@ const inscripciones: {
   { estudiante: 0, curso: 3, tipoPrecio: "EXTERNO", estado: EstadoInscripcion.INSCRITO, fotocopiaCi: true, fecha: "2025-07-28" },
   { estudiante: 2, curso: 3, tipoPrecio: "AUXILIAR", estado: EstadoInscripcion.INSCRITO, fotocopiaCi: true, fecha: "2025-07-29" },
   { estudiante: 4, curso: 3, tipoPrecio: "EXTERNO", estado: EstadoInscripcion.INSCRITO, fotocopiaCi: false, fecha: "2025-07-30" },
+  // INF-210-A: 2 de 5 minimos.
+  { estudiante: 0, curso: 4, tipoPrecio: "UMSS", estado: EstadoInscripcion.INSCRITO, fotocopiaCi: true, fecha: HOY },
+  { estudiante: 3, curso: 4, tipoPrecio: "EXTERNO", estado: EstadoInscripcion.INSCRITO, fotocopiaCi: true, fecha: HOY },
+  // INF-210-B: 1 inscrito, con cupo para recibir a los del grupo A.
+  { estudiante: 5, curso: 5, tipoPrecio: "UMSS", estado: EstadoInscripcion.INSCRITO, fotocopiaCi: true, fecha: HOY },
+  // INF-220: 3 de 3 minimos.
+  { estudiante: 1, curso: 6, tipoPrecio: "UMSS", estado: EstadoInscripcion.INSCRITO, fotocopiaCi: true, fecha: HOY },
+  { estudiante: 6, curso: 6, tipoPrecio: "AUXILIAR", estado: EstadoInscripcion.INSCRITO, fotocopiaCi: true, fecha: HOY },
+  { estudiante: 7, curso: 6, tipoPrecio: "EXTERNO", estado: EstadoInscripcion.INSCRITO, fotocopiaCi: false, fecha: HOY },
 ];
 
 const pagosPorInscripcion: { montoFisico: string; montoQr: string; fecha: string }[] = [
@@ -197,6 +302,12 @@ const pagosPorInscripcion: { montoFisico: string; montoQr: string; fecha: string
   { montoFisico: "0.00", montoQr: "0.00", fecha: "2025-07-28" },
   { montoFisico: "0.00", montoQr: "0.00", fecha: "2025-07-29" },
   { montoFisico: "100.00", montoQr: "0.00", fecha: "2025-07-30" },
+  { montoFisico: "100.00", montoQr: "0.00", fecha: HOY },
+  { montoFisico: "0.00", montoQr: "60.00", fecha: HOY },
+  { montoFisico: "0.00", montoQr: "0.00", fecha: HOY },
+  { montoFisico: "120.00", montoQr: "0.00", fecha: HOY },
+  { montoFisico: "0.00", montoQr: "0.00", fecha: HOY },
+  { montoFisico: "150.00", montoQr: "0.00", fecha: HOY },
 ];
 
 const certificados = [
@@ -227,6 +338,7 @@ const certificados = [
 ];
 
 async function limpiar() {
+  await prisma.notificacion.deleteMany();
   await prisma.certificado.deleteMany();
   await prisma.asistencia.deleteMany();
   await prisma.pago.deleteMany();
@@ -319,6 +431,13 @@ async function main() {
         duracionHoras: curso.duracionHoras,
         estado: "ACTIVO",
         cuposMax: curso.cuposMax,
+        cuposMin: curso.cuposMin ?? 0,
+        fechaLimiteInscripcion: curso.fechaLimiteInscripcion
+          ? soloFecha(curso.fechaLimiteInscripcion)
+          : null,
+        codigoMateria: curso.codigoMateria ?? curso.codigo,
+        // Los cursos que ya empezaron se consideran abiertos.
+        estadoApertura: curso.fechaIni <= HOY ? "ABIERTO" : "PENDIENTE",
       },
     });
 
@@ -388,7 +507,9 @@ async function main() {
 
     let presentes = 0;
     for (const sesion of sesiones) {
-      const presente = indice % 4 !== 3;
+      // Las sesiones futuras quedan AUSENTE (sin marcar), como en una inscripcion real.
+      const yaOcurrio = sesion.fecha.toISOString().slice(0, 10) <= HOY;
+      const presente = yaOcurrio && indice % 4 !== 3;
       if (presente) presentes++;
       await prisma.asistencia.create({
         data: {
@@ -432,6 +553,7 @@ async function main() {
     ambientes: await prisma.ambiente.count(),
     cursos: await prisma.curso.count(),
     sesiones: await prisma.sesion.count(),
+    cursosPorRevisar: await prisma.curso.count({ where: { estadoApertura: "PENDIENTE" } }),
     inscripciones: await prisma.inscripcion.count(),
     pagos: await prisma.pago.count(),
     asistencias: await prisma.asistencia.count(),

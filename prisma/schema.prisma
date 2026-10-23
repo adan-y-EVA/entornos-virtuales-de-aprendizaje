@@ -8,14 +8,15 @@ datasource db {
 }
 
 model Usuario {
-  ci           String       @id @db.VarChar(10)
-  nombres      String       @db.VarChar(80)
-  apellidos    String       @db.VarChar(80)
-  email        String       @unique @db.VarChar(120)
-  passwordHash String       @map("password_hash") @db.VarChar(255)
-  estudiante   Estudiante?
-  instructor   Instructor?
-  roles        UsuarioRol[]
+  ci             String         @id @db.VarChar(10)
+  nombres        String         @db.VarChar(80)
+  apellidos      String         @db.VarChar(80)
+  email          String         @unique @db.VarChar(120)
+  passwordHash   String         @map("password_hash") @db.VarChar(255)
+  estudiante     Estudiante?
+  instructor     Instructor?
+  roles          UsuarioRol[]
+  notificaciones Notificacion[]
 
   @@map("usuario")
 }
@@ -61,34 +62,67 @@ model Instructor {
 }
 
 model Curso {
-  codigo        String        @id @db.VarChar(20)
-  ciInstructor  String        @map("ci_instructor") @db.VarChar(10)
-  nombre        String        @db.VarChar(150)
-  grupo         String        @db.VarChar(10)
-  nivel         String        @db.VarChar(50)
-  costoExterno  Decimal       @default(0) @map("costo_externo") @db.Decimal(10, 2)
-  costoUmss     Decimal       @default(0) @map("costo_umss") @db.Decimal(10, 2)
-  costoAuxiliar Decimal       @default(0) @map("costo_auxiliar") @db.Decimal(10, 2)
-  moneda        String        @default("BOB") @db.VarChar(3)
-  fechaIni      DateTime      @map("fecha_ini") @db.Date
-  fechaFin      DateTime      @map("fecha_fin") @db.Date
-  duracionHoras Int           @map("duracion_horas")
-  numInscritos  Int           @default(0) @map("num_inscritos")
-  cuposMax      Int           @default(0) @map("cupos_max")
-  instructor    Instructor    @relation(fields: [ciInstructor], references: [ci])
-  inscripciones Inscripcion[]
-  sesiones      Sesion[]
-  certificados  Certificado[]
-  estado        EstadoCurso   @default(ACTIVO)
+  codigo                 String         @id @db.VarChar(20)
+  ciInstructor           String         @map("ci_instructor") @db.VarChar(10)
+  nombre                 String         @db.VarChar(150)
+  grupo                  String         @db.VarChar(10)
+  nivel                  String         @db.VarChar(50)
+  costoExterno           Decimal        @default(0) @map("costo_externo") @db.Decimal(10, 2)
+  costoUmss              Decimal        @default(0) @map("costo_umss") @db.Decimal(10, 2)
+  costoAuxiliar          Decimal        @default(0) @map("costo_auxiliar") @db.Decimal(10, 2)
+  moneda                 String         @default("BOB") @db.VarChar(3)
+  fechaIni               DateTime       @map("fecha_ini") @db.Date
+  fechaFin               DateTime       @map("fecha_fin") @db.Date
+  duracionHoras          Int            @map("duracion_horas")
+  numInscritos           Int            @default(0) @map("num_inscritos")
+  cuposMax               Int            @default(0) @map("cupos_max")
+  // Minimo de inscritos para que el curso se abra (0 = sin minimo).
+  cuposMin               Int            @default(0) @map("cupos_min")
+  // Ultimo dia para inscribirse. Si es null se usa fechaIni.
+  fechaLimiteInscripcion DateTime?      @map("fecha_limite_inscripcion") @db.Date
+  // Agrupa los grupos de una misma materia (ej. INF-101-A e INF-101-B).
+  codigoMateria          String?        @map("codigo_materia") @db.VarChar(20)
+  instructor             Instructor     @relation(fields: [ciInstructor], references: [ci])
+  inscripciones          Inscripcion[]
+  sesiones               Sesion[]
+  certificados           Certificado[]
+  notificaciones         Notificacion[]
+  // Ciclo de vida del curso (ACTIVO -> CERRADO al terminar y cargar notas).
+  estado                 EstadoCurso    @default(ACTIVO)
+  // Decision del instructor al cierre de inscripciones, segun cuposMin.
+  estadoApertura         EstadoApertura @default(PENDIENTE) @map("estado_apertura")
 
   @@index([ciInstructor])
   @@index([fechaIni])
+  @@index([codigoMateria])
+  @@index([estadoApertura, fechaLimiteInscripcion])
   @@map("curso")
 }
 
 enum EstadoCurso {
   ACTIVO
   CERRADO
+}
+
+enum EstadoApertura {
+  PENDIENTE
+  ABIERTO
+  CERRADO
+}
+
+model Notificacion {
+  id            Int      @id @default(autoincrement())
+  ciUsuario     String   @map("ci_usuario") @db.VarChar(10)
+  codigoCurso   String?  @map("codigo_curso") @db.VarChar(20)
+  titulo        String   @db.VarChar(150)
+  mensaje       String   @db.Text
+  leida         Boolean  @default(false)
+  fechaCreacion DateTime @default(now()) @map("fecha_creacion")
+  usuario       Usuario  @relation(fields: [ciUsuario], references: [ci], onDelete: Cascade)
+  curso         Curso?   @relation(fields: [codigoCurso], references: [codigo], onDelete: SetNull)
+
+  @@index([ciUsuario, leida])
+  @@map("notificacion")
 }
 
 model Ambiente {
@@ -117,16 +151,16 @@ model Sesion {
 }
 
 model Inscripcion {
-  id               Int                @id @default(autoincrement())
-  ciEstudiante     String             @map("ci_estudiante") @db.VarChar(10)
-  codigoCurso      String             @map("codigo_curso") @db.VarChar(20)
-  tipoPrecio       String             @map("tipo_precio") @db.VarChar(30)
-  fotocopiaCi      Boolean            @default(false) @map("fotocopia_ci")
-  fechaInscripcion DateTime           @default(now()) @map("fecha_inscripcion") @db.Date
-  estado           EstadoInscripcion  @default(INSCRITO) @map("estado")
-  estadoPago       EstadoPago         @default(PENDIENTE) @map("estado_pago")
-  estudiante       Estudiante         @relation(fields: [ciEstudiante], references: [ci], onDelete: Cascade)
-  curso            Curso              @relation(fields: [codigoCurso], references: [codigo], onDelete: Cascade)
+  id               Int               @id @default(autoincrement())
+  ciEstudiante     String            @map("ci_estudiante") @db.VarChar(10)
+  codigoCurso      String            @map("codigo_curso") @db.VarChar(20)
+  tipoPrecio       String            @map("tipo_precio") @db.VarChar(30)
+  fotocopiaCi      Boolean           @default(false) @map("fotocopia_ci")
+  fechaInscripcion DateTime          @default(now()) @map("fecha_inscripcion") @db.Date
+  estado           EstadoInscripcion @default(INSCRITO) @map("estado")
+  estadoPago       EstadoPago        @default(PENDIENTE) @map("estado_pago")
+  estudiante       Estudiante        @relation(fields: [ciEstudiante], references: [ci], onDelete: Cascade)
+  curso            Curso             @relation(fields: [codigoCurso], references: [codigo], onDelete: Cascade)
   pago             Pago?
 
   @@unique([ciEstudiante, codigoCurso])
