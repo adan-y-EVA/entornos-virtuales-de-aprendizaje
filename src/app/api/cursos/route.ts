@@ -1,4 +1,4 @@
-import { CursoService } from "./courses.service";
+import { CursoService, ErrorValidacionCurso } from "./courses.service";
 import { logger } from "@/src/lib/logger";
 import { ok, created, fail } from "@/src/lib/api-response";
 
@@ -18,6 +18,7 @@ export async function POST(request: Request) {
     const nuevoCurso = await CursoService.create(body);
     return created({ curso: nuevoCurso });
   } catch (error) {
+    if (error instanceof ErrorValidacionCurso) return fail(error.message, 400);
     logger.warn("POST /api/cursos", { error: error instanceof Error ? error.message : String(error) });
     return fail("No se pudo crear el curso. Verifica si el código o el CI del instructor son válidos.", 400);
   }

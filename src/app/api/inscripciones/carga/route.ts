@@ -98,7 +98,9 @@ export async function POST(request: Request) {
 
   if (!curso.abiertos) {
     return fail(
-      `La inscripción al curso ${curso.codigo} se cerró: la fecha de inicio (${curso.fechaIni}) ya pasó.`,
+      curso.cerradoPorCupo
+        ? `El curso ${curso.codigo} fue cerrado por no alcanzar el mínimo de inscritos.`
+        : `La inscripción al curso ${curso.codigo} se cerró: la fecha límite (${curso.fechaLimite}) ya pasó.`,
       409,
       { columna: COL.fechaInicio },
     );

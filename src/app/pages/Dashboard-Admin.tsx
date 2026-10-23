@@ -7,6 +7,7 @@ import { Button } from '../components/Button';
 import { Badge } from '../components/Badge';
 import { StatCard } from '../components/StatCard';
 import { CursoDetalleModal } from '../components/courses/CursoDetalleModal';
+import { CursosPorRevisar } from '../components/apertura/CursosPorRevisar';
 import { useAuth } from '@/src/context/AuthContext';
 import { useApi } from '@/src/hooks/useApi';
 
@@ -103,6 +104,8 @@ export default function DashboardView() {
       </header>
 
       <main className="p-6 flex-1 w-full overflow-x-hidden">
+        <CursosPorRevisar />
+
         {/* Estadísticas */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8 w-full">
           <StatCard title="Cursos Activos" value={estadisticas.activos} icon={<BookOpen />} iconBgClass="bg-blue-100" iconTextClass="text-primary" />

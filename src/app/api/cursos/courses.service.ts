@@ -13,6 +13,35 @@ export interface CursoInput {
   fechaFin: string;
   duracionHoras: number;
   cuposMax: number;
+  cuposMin?: number;
+  fechaLimiteInscripcion?: string | null;
+  codigoMateria?: string | null;
+}
+
+export class ErrorValidacionCurso extends Error {}
+
+/** Campos de apertura (minimo, fecha limite, materia) normalizados y validados. */
+function camposApertura(data: CursoInput) {
+  const cuposMin = Number(data.cuposMin ?? 0);
+  const cuposMax = Number(data.cuposMax ?? 0);
+  if (!Number.isInteger(cuposMin) || cuposMin < 0) {
+    throw new ErrorValidacionCurso("El mínimo de inscritos debe ser un entero no negativo.");
+  }
+  if (cuposMax > 0 && cuposMin > cuposMax) {
+    throw new ErrorValidacionCurso("El mínimo de inscritos no puede superar el cupo máximo.");
+  }
+
+  const fechaLimite = data.fechaLimiteInscripcion?.trim() || null;
+  if (fechaLimite && fechaLimite > data.fechaIni) {
+    throw new ErrorValidacionCurso("La fecha límite de inscripción no puede ser posterior al inicio.");
+  }
+
+  return {
+    cuposMin,
+    fechaLimiteInscripcion: fechaLimite ? new Date(fechaLimite) : null,
+    // Sin materia explicita, el curso es su propia materia (sin otros grupos).
+    codigoMateria: data.codigoMateria?.trim().toUpperCase() || data.codigo,
+  };
 }
 
 export const CursoService = {
@@ -62,6 +91,10 @@ export const CursoService = {
       fechaFin: curso.fechaFin.toISOString().slice(0, 10),
       duracionHoras: curso.duracionHoras,
       cuposMax: curso.cuposMax,
+      cuposMin: curso.cuposMin,
+      fechaLimiteInscripcion: (curso.fechaLimiteInscripcion ?? curso.fechaIni).toISOString().slice(0, 10),
+      codigoMateria: curso.codigoMateria,
+      estadoApertura: curso.estadoApertura,
       inscritos: curso.inscripciones.filter((i) => i.estado === 'INSCRITO').length,
       instructor: {
         ci: curso.instructor.ci,
@@ -98,12 +131,14 @@ export const CursoService = {
         fechaFin: new Date(data.fechaFin),
         duracionHoras: data.duracionHoras,
         cuposMax: data.cuposMax,
+        ...camposApertura(data),
         estado: 'ACTIVO'
       }
     });
   },
 
   update: async (codigo: string, data: CursoInput) => {
+    const apertura = camposApertura({ ...data, codigo });
     return await prisma.curso.update({
       where: { codigo },
       data: {
@@ -118,6 +153,7 @@ export const CursoService = {
         fechaFin: new Date(data.fechaFin),
         duracionHoras: data.duracionHoras,
         cuposMax: data.cuposMax,
+        ...apertura,
       }
     });
   },
