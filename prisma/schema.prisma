@@ -48,6 +48,7 @@ model Estudiante {
   inscripciones Inscripcion[]
   asistencias   Asistencia[]
   certificados  Certificado[]
+  notas         Nota[]
 
   @@map("estudiante")
 }
@@ -91,6 +92,9 @@ model Curso {
   estado                 EstadoCurso    @default(ACTIVO)
   // Decision del instructor al cierre de inscripciones, segun cuposMin.
   estadoApertura         EstadoApertura @default(PENDIENTE) @map("estado_apertura")
+  // Nota minima para obtener certificado APROBADO. Configurable por curso.
+  notaMinimaAprobacion   Decimal        @default(70) @map("nota_minima_aprobacion") @db.Decimal(5, 2)
+  evaluaciones           Evaluacion[]
 
   @@index([ciInstructor])
   @@index([fechaIni])
@@ -226,4 +230,37 @@ model Certificado {
   @@unique([ciEstudiante, codigoCurso])
   @@index([codigoCurso])
   @@map("certificado")
+}
+
+// Evaluacion parcial de un curso (ej. "Parcial 1"). El `peso` es el porcentaje
+// de ponderacion dentro de la nota final. No tiene por que sumar 100: el
+// promedio se normaliza por la suma de los pesos de las evaluaciones con nota.
+model Evaluacion {
+  id          Int      @id @default(autoincrement())
+  codigoCurso String   @map("codigo_curso") @db.VarChar(20)
+  nombre      String   @db.VarChar(80)
+  peso        Decimal  @db.Decimal(5, 2)
+  orden       Int      @default(0)
+  curso       Curso    @relation(fields: [codigoCurso], references: [codigo], onDelete: Cascade)
+  notas       Nota[]
+
+  @@unique([codigoCurso, nombre])
+  @@index([codigoCurso])
+  @@map("evaluacion")
+}
+
+// Nota de un estudiante en una evaluacion concreta. El promedio ponderado de
+// estas notas se refleja en `Certificado.notaFinal` para alimentar el flujo
+// de certificados y el cierre de curso.
+model Nota {
+  id           Int        @id @default(autoincrement())
+  idEvaluacion Int        @map("id_evaluacion")
+  ciEstudiante String     @map("ci_estudiante") @db.VarChar(10)
+  valor        Decimal    @db.Decimal(5, 2)
+  evaluacion   Evaluacion @relation(fields: [idEvaluacion], references: [id], onDelete: Cascade)
+  estudiante   Estudiante @relation(fields: [ciEstudiante], references: [ci], onDelete: Cascade)
+
+  @@unique([idEvaluacion, ciEstudiante])
+  @@index([ciEstudiante])
+  @@map("nota")
 }

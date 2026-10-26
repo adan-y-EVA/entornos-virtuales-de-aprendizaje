@@ -14,6 +14,10 @@ export interface CursoInscrito {
   horario: string;
   horas: number;
   avance: number;
+  /** Nota final (promedio ponderado en cursos con evaluaciones). */
+  nota: number | null;
+  /** Nota mínima para aprobar de este curso. */
+  notaMinima: number;
   estado: 'activo' | 'finalizado' | 'pre-inscripcion';
 }
 
@@ -24,11 +28,14 @@ export interface CertificadoEstudiante {
   nota: number | null;
   asistencia: number;
   fecha: string;
-  estado: 'aprobado' | 'pendiente';
+  estado: 'aprobado' | 'asistencia' | 'pendiente';
 }
 
 interface DashboardStudentProps {
   nombre?: string;
+  cargando?: boolean;
+  busqueda?: string;
+  onBuscar?: (valor: string) => void;
   estadisticas?: {
     cursosActivos: number;
     horasCursadas: number;
@@ -39,12 +46,38 @@ interface DashboardStudentProps {
   certificados?: CertificadoEstudiante[];
 }
 
+const COLOR_CERTIFICADO: Record<CertificadoEstudiante['estado'], string> = {
+  aprobado: 'text-green-600',
+  asistencia: 'text-blue-600',
+  pendiente: 'text-yellow-600',
+};
+
+const ETIQUETA_CERTIFICADO: Record<CertificadoEstudiante['estado'], string> = {
+  aprobado: 'Aprobado',
+  asistencia: 'Asistencia',
+  pendiente: 'Pendiente',
+};
+
 export default function DashboardStudentView({
   nombre = 'estudiante',
+  cargando = false,
+  busqueda = '',
+  onBuscar,
   estadisticas = { cursosActivos: 0, horasCursadas: 0, asistenciaPromedio: 0, certificados: 0 },
   cursos = [],
   certificados = [],
 }: DashboardStudentProps) {
+  // Filtra por nombre, código o instructor mientras se escribe en el buscador.
+  const filtro = busqueda.trim().toLowerCase();
+  const cursosVisibles = filtro
+    ? cursos.filter(
+        (curso) =>
+          curso.nombre.toLowerCase().includes(filtro) ||
+          curso.codigo.toLowerCase().includes(filtro) ||
+          curso.instructor.toLowerCase().includes(filtro),
+      )
+    : cursos;
+
   return (
     <div className="w-full h-full bg-white flex flex-col">
       <header className="bg-white border-b border-card-border p-4 flex justify-between items-center w-full">
@@ -62,6 +95,8 @@ export default function DashboardStudentView({
             <input
               type="text"
               placeholder="Buscar mis cursos..."
+              value={busqueda}
+              onChange={(event) => onBuscar?.(event.target.value)}
               className="pl-10 pr-4 py-2 border border-input-border rounded-lg text-sm w-64"
             />
           </div>
@@ -118,18 +153,31 @@ export default function DashboardStudentView({
                     <th className="p-4">Curso</th>
                     <th className="p-4">Instructor</th>
                     <th className="p-4">Avance</th>
+                    <th className="p-4">Promedio</th>
                     <th className="p-4">Estado</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {cursos.length === 0 ? (
+                  {cargando ? (
                     <tr>
-                      <td colSpan={4} className="p-4 text-center text-text-muted">
+                      <td colSpan={5} className="p-4 text-center text-text-muted">
+                        Cargando tus cursos...
+                      </td>
+                    </tr>
+                  ) : cursos.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="p-4 text-center text-text-muted">
                         No estas inscrito en ningun curso aun.
                       </td>
                     </tr>
+                  ) : cursosVisibles.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="p-4 text-center text-text-muted">
+                        No hay cursos que coincidan con &quot;{busqueda}&quot;.
+                      </td>
+                    </tr>
                   ) : (
-                    cursos.map((curso) => (
+                    cursosVisibles.map((curso) => (
                       <tr key={curso.codigo} className="border-b border-card-border hover:bg-gray-50">
                         <td className="p-4">
                           <p className="font-bold text-text-main">{curso.nombre}</p>
@@ -148,6 +196,20 @@ export default function DashboardStudentView({
                             </div>
                             <span className="text-xs text-text-muted">{curso.avance}%</span>
                           </div>
+                        </td>
+                        <td className="p-4 text-sm font-bold">
+                          {curso.nota === null ? (
+                            <span className="text-xs text-text-muted italic font-normal">
+                              Sin nota
+                            </span>
+                          ) : (
+                            <span
+                              className={curso.nota >= curso.notaMinima ? 'text-green-700' : 'text-red-700'}
+                              title={`Nota mínima para aprobar: ${curso.notaMinima}`}
+                            >
+                              {curso.nota}
+                            </span>
+                          )}
                         </td>
                         <td className="p-4">
                           <Badge
@@ -187,13 +249,11 @@ export default function DashboardStudentView({
                 certificados.map((cert) => (
                   <div key={cert.id} className="bg-white p-4 rounded-lg border border-card-border shadow-sm">
                     <div className="flex justify-between items-start mb-2">
-                      <div
-                        className={`flex items-center space-x-1 ${
-                          cert.estado === 'aprobado' ? 'text-green-600' : 'text-yellow-600'
-                        }`}
-                      >
+                      <div className={`flex items-center space-x-1 ${COLOR_CERTIFICADO[cert.estado]}`}>
                         <CheckCircle size={14} />
-                        <span className="text-xs font-bold uppercase">{cert.estado}</span>
+                        <span className="text-xs font-bold uppercase">
+                          {ETIQUETA_CERTIFICADO[cert.estado]}
+                        </span>
                       </div>
                       <span className="text-xs text-text-muted font-mono">Cod: {cert.codigo}</span>
                     </div>

@@ -5,15 +5,23 @@ import Link from 'next/link';
 import { CheckCircle, Users } from 'lucide-react';
 import { useApi } from '@/src/hooks/useApi';
 import { Badge } from '../components/Badge';
-import { GradeEntry } from '../components/asistencia/GradeEntry';
+import { GradeMatrix } from '../components/asistencia/GradeMatrix';
 import { formatFecha, type CursoAsistencia } from '../components/asistencia/types';
 
 type Pestana = 'sesiones' | 'notas';
+type FiltroCurso = 'ACTIVO' | 'CERRADO' | 'TODOS';
+
+const FILTROS: { valor: FiltroCurso; etiqueta: string }[] = [
+  { valor: 'ACTIVO', etiqueta: 'Activos' },
+  { valor: 'CERRADO', etiqueta: 'Cerrados' },
+  { valor: 'TODOS', etiqueta: 'Todos' },
+];
 
 export default function PaginaAsistencia() {
   const [cursos, setCursos] = useState<CursoAsistencia[]>([]);
   const [seleccionado, setSeleccionado] = useState<string | null>(null);
   const [pestana, setPestana] = useState<Pestana>('sesiones');
+  const [filtro, setFiltro] = useState<FiltroCurso>('ACTIVO');
   const [cargando, setCargando] = useState(true);
   const { call } = useApi();
 
@@ -36,9 +44,17 @@ export default function PaginaAsistencia() {
     setPestana('sesiones');
   };
 
+  const cursosFiltrados = useMemo(() => {
+    if (filtro === 'TODOS') return cursos;
+    return cursos.filter((curso) => (curso.estado || 'ACTIVO') === filtro);
+  }, [cursos, filtro]);
+
   const cursoActual = useMemo(
-    () => cursos.find((curso) => curso.codigo === seleccionado) ?? null,
-    [cursos, seleccionado],
+    () =>
+      cursosFiltrados.find((curso) => curso.codigo === seleccionado) ??
+      cursosFiltrados[0] ??
+      null,
+    [cursosFiltrados, seleccionado],
   );
 
   return (
@@ -47,7 +63,7 @@ export default function PaginaAsistencia() {
       <div>
         <h1 className="text-2xl font-primary font-bold text-text-main">Asistencia y Notas</h1>
         <p className="text-text-muted text-sm mt-1">
-          Registro de asistencia por curso y sesión
+          Registro de asistencia por curso y gestión de notas con promedios
         </p>
       </div>
 
@@ -61,9 +77,37 @@ export default function PaginaAsistencia() {
         </div>
       ) : (
         <>
-          {/* Selector de cursos */}
+          {/* Filtro por estado + selector de cursos */}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex gap-1 rounded-lg border border-input-border bg-white p-1">
+              {FILTROS.map((opcion) => (
+                <button
+                  key={opcion.valor}
+                  onClick={() => setFiltro(opcion.valor)}
+                  className={`px-4 py-1.5 rounded-md text-xs font-semibold transition-colors ${
+                    filtro === opcion.valor
+                      ? 'bg-primary text-white'
+                      : 'text-text-muted hover:bg-gray-100'
+                  }`}
+                >
+                  {opcion.etiqueta}
+                </button>
+              ))}
+            </div>
+            <span className="text-xs text-text-muted font-secondary">
+              {cursosFiltrados.length} curso{cursosFiltrados.length === 1 ? '' : 's'}
+            </span>
+          </div>
+
+          {cursosFiltrados.length === 0 ? (
+            <div className="p-8 text-center text-text-muted bg-white border border-card-border rounded-xl">
+              No hay cursos {filtro === 'TODOS' ? '' : filtro === 'ACTIVO' ? 'activos' : 'cerrados'}{' '}
+              para ti.
+            </div>
+          ) : (
+          <>
           <div className="flex gap-3 overflow-x-auto pb-1">
-            {cursos.map((curso) => {
+            {cursosFiltrados.map((curso) => {
               const activo = curso.codigo === seleccionado;
               return (
                 <button
@@ -155,7 +199,7 @@ export default function PaginaAsistencia() {
             {pestana === 'notas' ? (
               cursoActual ? (
                 <div className="p-4">
-                  <GradeEntry key={cursoActual.codigo} codigoCurso={cursoActual.codigo} />
+                  <GradeMatrix key={cursoActual.codigo} codigoCurso={cursoActual.codigo} />
                 </div>
               ) : null
             ) : cursoActual && cursoActual.sesiones.length === 0 ? (
@@ -231,6 +275,8 @@ export default function PaginaAsistencia() {
               </div>
             )}
           </div>
+          </>
+        )}
         </>
       )}
     </div>

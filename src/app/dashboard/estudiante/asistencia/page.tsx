@@ -26,6 +26,16 @@ export default function PaginaAsistenciaEstudiante() {
       ? Math.round(cursos.reduce((suma, curso) => suma + curso.pctAsistencia, 0) / cursos.length)
       : 0;
 
+  const cursosConNota = cursos.filter((curso) => curso.notaFinal !== null);
+  const promedioNotas =
+    cursosConNota.length > 0
+      ? Math.round(
+          (cursosConNota.reduce((suma, curso) => suma + (curso.notaFinal ?? 0), 0) /
+            cursosConNota.length) *
+            100,
+        ) / 100
+      : null;
+
   return (
     <div className="flex flex-col h-full bg-card-bg p-6 gap-4">
       <div>
@@ -54,6 +64,14 @@ export default function PaginaAsistenciaEstudiante() {
             <div className="bg-white border border-card-border rounded-xl px-5 py-3 shadow-sm">
               <p className="text-xs text-text-muted font-semibold">Asistencia promedio</p>
               <p className="text-xl font-bold text-primary">{promedio}%</p>
+            </div>
+            <div className="bg-white border border-card-border rounded-xl px-5 py-3 shadow-sm">
+              <p className="text-xs text-text-muted font-semibold">Promedio general de notas</p>
+              <p className="text-xl font-bold text-primary">{promedioNotas ?? '—'}</p>
+              <p className="text-[10px] text-text-muted">
+                {cursosConNota.length} de {cursos.length} curso
+                {cursos.length === 1 ? '' : 's'} con nota
+              </p>
             </div>
             <div className="bg-white border border-card-border rounded-xl px-5 py-3 shadow-sm">
               <p className="text-xs text-text-muted font-semibold">Certificados obtenidos</p>

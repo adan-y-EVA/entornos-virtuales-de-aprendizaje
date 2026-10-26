@@ -85,7 +85,7 @@ export interface EvaluacionCertificado {
   motivo: string | null;
 }
 
-interface Usuario {
+export interface Usuario {
   ci: string;
   role: Rol;
 }
@@ -98,7 +98,10 @@ function soloHora(valor: Date): string {
   return valor.toISOString().slice(11, 16);
 }
 
-function validarUsuarioSesion(sesionCurso: { ciInstructor: string }, usuario: Usuario): void {
+export function validarUsuarioSesion(
+  sesionCurso: { ciInstructor: string },
+  usuario: Usuario,
+): void {
   if (usuario.role !== "ADMIN" && sesionCurso.ciInstructor !== usuario.ci) {
     throw new ErrorAsistencia("No tienes permiso sobre este curso.");
   }
@@ -111,7 +114,7 @@ function validarEstado(estado: string): asserts estado is EstadoAsistencia {
 }
 
 /** Verifica que el curso esté ACTIVO (permite modificaciones). */
-function validarCursoAbierto(curso: { estado: string }): void {
+export function validarCursoAbierto(curso: { estado: string }): void {
   if (curso.estado !== "ACTIVO") {
     throw new ErrorAsistencia("El curso está cerrado. No se pueden realizar modificaciones.");
   }
@@ -384,6 +387,12 @@ export interface ProgresoCurso {
   fechaIni: string;
   fechaFin: string;
   instructor: string;
+  /** Horas totales del curso. */
+  duracionHoras: number;
+  /** Horario agregado de las sesiones (ej. "08:00 - 10:00"). */
+  horario: string | null;
+  /** Estado del curso (ACTIVO / CERRADO). */
+  estadoCurso: string;
   totalSesiones: number;
   presentes: number;
   justificadas: number;
@@ -391,13 +400,19 @@ export interface ProgresoCurso {
   pctAsistencia: number;
   elegibleCertificado: boolean;
   notaFinal: number | null;
+  /** Desglose por evaluación (vacío si el curso no define evaluaciones). */
+  evaluaciones: { nombre: string; peso: number; nota: number | null }[];
+  /** Nota mínima para APROBADO, configurable por curso. */
+  notaMinima: number;
   tipoCertificado: string | null;
   codigoVerificacion: string | null;
+  /** Fecha de emisión del certificado, si existe. Null con fecha emisión. */
+  fechaEmision: string | null;
 }
 
 /** Progreso de un estudiante: asistencia + nota + certificado por cada curso inscrito. */
 export async function getProgresoEstudiante(ciEstudiante: string): Promise<ProgresoCurso[]> {
-  const [inscripciones, certificados] = await Promise.all([
+  const [inscripciones, certificados, notasBrutas] = await Promise.all([
     prisma.inscripcion.findMany({
       where: { ciEstudiante, estado: "INSCRITO" },
       include: {
@@ -405,6 +420,14 @@ export async function getProgresoEstudiante(ciEstudiante: string): Promise<Progr
           include: {
             instructor: {
               include: { usuario: { select: { nombres: true, apellidos: true } } },
+            },
+            sesiones: {
+              orderBy: { fecha: "asc" },
+              select: { horaInicio: true, horaFin: true },
+            },
+            evaluaciones: {
+              orderBy: [{ orden: "asc" }, { id: "asc" }],
+              select: { id: true, nombre: true, peso: true },
             },
           },
         },
@@ -417,9 +440,18 @@ export async function getProgresoEstudiante(ciEstudiante: string): Promise<Progr
         codigoVerificacion: true,
         tipo: true,
         notaFinal: true,
+        fechaEmision: true,
       },
     }),
+    prisma.nota.findMany({
+      where: { ciEstudiante },
+      select: { idEvaluacion: true, valor: true },
+    }),
   ]);
+
+  const notaPorEvaluacion = new Map<number, number>(
+    notasBrutas.map((nota) => [nota.idEvaluacion, Number(nota.valor)]),
+  );
 
   const certificadoPorCurso = new Map(
     certificados.map((certificado) => [certificado.codigoCurso, certificado]),
@@ -430,6 +462,15 @@ export async function getProgresoEstudiante(ciEstudiante: string): Promise<Progr
     const estado = await calcularEstadoAsistencia(ciEstudiante, inscripcion.codigoCurso);
     const certificado = certificadoPorCurso.get(inscripcion.codigoCurso);
 
+    // Horario agregado de las sesiones (ej. "08:00 - 10:00 / 14:00 - 16:00").
+    const rangosHorario = [
+      ...new Set(
+        inscripcion.curso.sesiones.map(
+          (sesion) => `${soloHora(sesion.horaInicio)} - ${soloHora(sesion.horaFin)}`,
+        ),
+      ),
+    ].sort();
+
     progreso.push({
       codigo: inscripcion.curso.codigo,
       nombre: inscripcion.curso.nombre,
@@ -438,6 +479,9 @@ export async function getProgresoEstudiante(ciEstudiante: string): Promise<Progr
       fechaIni: soloFecha(inscripcion.curso.fechaIni),
       fechaFin: soloFecha(inscripcion.curso.fechaFin),
       instructor: `${inscripcion.curso.instructor.usuario.nombres} ${inscripcion.curso.instructor.usuario.apellidos}`,
+      duracionHoras: inscripcion.curso.duracionHoras,
+      horario: rangosHorario.length > 0 ? rangosHorario.join(" / ") : null,
+      estadoCurso: inscripcion.curso.estado,
       totalSesiones: estado.totalSesiones,
       presentes: estado.presentes,
       justificadas: estado.justificadas,
@@ -445,8 +489,15 @@ export async function getProgresoEstudiante(ciEstudiante: string): Promise<Progr
       pctAsistencia: estado.pctAsistencia,
       elegibleCertificado: estado.elegibleCertificado,
       notaFinal: certificado?.notaFinal != null ? Number(certificado.notaFinal) : null,
+      evaluaciones: inscripcion.curso.evaluaciones.map((evaluacion) => ({
+        nombre: evaluacion.nombre,
+        peso: Number(evaluacion.peso),
+        nota: notaPorEvaluacion.get(evaluacion.id) ?? null,
+      })),
+      notaMinima: Number(inscripcion.curso.notaMinimaAprobacion),
       tipoCertificado: certificado?.tipo ?? null,
       codigoVerificacion: certificado?.codigoVerificacion ?? null,
+      fechaEmision: certificado?.fechaEmision ? soloFecha(certificado.fechaEmision) : null,
     });
   }
 
@@ -524,7 +575,7 @@ export async function getEstudiantesCurso(
 }
 
 /** Código de verificación único para un certificado (formato CERT-YYYY-XXXXXX). */
-async function generarCodigoVerificacion(): Promise<string> {
+export async function generarCodigoVerificacion(): Promise<string> {
   const anio = new Date().getFullYear();
   for (let intento = 0; intento < 5; intento++) {
     const sufijo = Math.random().toString(36).slice(2, 8).toUpperCase().padEnd(6, "0");
@@ -566,6 +617,15 @@ export async function guardarNotas(
   if (!curso) throw new ErrorAsistencia("El curso no existe.");
   validarUsuarioSesion(curso, usuario);
   validarCursoAbierto(curso);
+
+  // Con evaluaciones definidas la nota final es el promedio calculado: no se
+  // permite editarla directamente para no pisar el resultado.
+  const totalEvaluaciones = await prisma.evaluacion.count({ where: { codigoCurso } });
+  if (totalEvaluaciones > 0) {
+    throw new ErrorAsistencia(
+      "Este curso tiene evaluaciones definidas: la nota final se calcula como promedio. Registra las notas en cada evaluación.",
+    );
+  }
 
   for (const update of updates) {
     if (typeof update.ci !== "string" || update.ci.length === 0) {

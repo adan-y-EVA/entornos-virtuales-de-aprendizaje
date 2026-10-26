@@ -109,6 +109,8 @@ interface CursoSemilla {
   cuposMin?: number;
   fechaLimiteInscripcion?: string;
   codigoMateria?: string;
+  /** Nota mínima para APROBADO. Por defecto 70. */
+  notaMinimaAprobacion?: string;
 }
 
 const cursos: CursoSemilla[] = [
@@ -153,6 +155,8 @@ const cursos: CursoSemilla[] = [
     fechaFin: "2026-07-17",
     duracionHoras: 40,
     cuposMax: 30,
+    // Umbral de aprobación personalizado para demostrar la configuración por curso.
+    notaMinimaAprobacion: "60.00",
   },
   {
     codigo: "INF-150",
@@ -337,9 +341,61 @@ const certificados = [
   },
 ];
 
+/**
+ * Evaluaciones por curso (modo promedio ponderado). Los cursos que no aparecen
+ * aquí siguen en modo nota única: INF-150 conserva las notas de los
+ * certificados del seed, y los cursos de apertura arrancan sin notas.
+ */
+const evaluacionesPorCurso: Record<string, { nombre: string; peso: number }[]> = {
+  "INF-101": [
+    { nombre: "Parcial 1", peso: 30 },
+    { nombre: "Parcial 2", peso: 40 },
+    { nombre: "Trabajos", peso: 30 },
+  ],
+  "INF-204": [
+    { nombre: "Parcial 1", peso: 50 },
+    { nombre: "Laboratorio", peso: 20 },
+    { nombre: "Proyecto final", peso: 30 },
+  ],
+  "INF-301": [
+    { nombre: "Taller 1", peso: 25 },
+    { nombre: "Taller 2", peso: 25 },
+    { nombre: "Examen final", peso: 50 },
+  ],
+};
+
+/** Notas cargadas por estudiante (indice del arreglo `estudiantes`) y evaluación. */
+const notasPorCurso: Record<string, { estudiante: number; evaluacion: string; valor: string }[]> = {
+  // Carla: 78x30 + 71x40 + 85x30 => promedio 77.3 (aprobada).
+  "INF-101": [
+    { estudiante: 2, evaluacion: "Parcial 1", valor: "78.00" },
+    { estudiante: 2, evaluacion: "Parcial 2", valor: "71.00" },
+    { estudiante: 2, evaluacion: "Trabajos", valor: "85.00" },
+  ],
+  // Diego: promedio 61 (certificado de asistencia). Fabricio: solo Parcial 1 cargada.
+  "INF-204": [
+    { estudiante: 3, evaluacion: "Parcial 1", valor: "65.00" },
+    { estudiante: 3, evaluacion: "Laboratorio", valor: "60.00" },
+    { estudiante: 3, evaluacion: "Proyecto final", valor: "55.00" },
+    { estudiante: 5, evaluacion: "Parcial 1", valor: "90.00" },
+  ],
+  // Gabriela: 87 aprobada. Bruno: 60.25 aprobado gracias al umbral 60 de INF-301
+  // (con el 70 por defecto sería de asistencia).
+  "INF-301": [
+    { estudiante: 6, evaluacion: "Taller 1", valor: "88.00" },
+    { estudiante: 6, evaluacion: "Taller 2", valor: "92.00" },
+    { estudiante: 6, evaluacion: "Examen final", valor: "84.00" },
+    { estudiante: 1, evaluacion: "Taller 1", valor: "55.00" },
+    { estudiante: 1, evaluacion: "Taller 2", valor: "58.00" },
+    { estudiante: 1, evaluacion: "Examen final", valor: "64.00" },
+  ],
+};
+
 async function limpiar() {
   await prisma.notificacion.deleteMany();
   await prisma.certificado.deleteMany();
+  await prisma.nota.deleteMany();
+  await prisma.evaluacion.deleteMany();
   await prisma.asistencia.deleteMany();
   await prisma.pago.deleteMany();
   await prisma.inscripcion.deleteMany();
@@ -545,6 +601,94 @@ async function main() {
     });
   }
 
+  // 5. EVALUACIONES Y NOTAS: promedio ponderado por curso.
+  let contadorCertificado = 0;
+  for (const [codigoCurso, evaluaciones] of Object.entries(evaluacionesPorCurso)) {
+    const creadas = new Map<string, { id: number; peso: number }>();
+    for (const [indice, evaluacion] of evaluaciones.entries()) {
+      const creada = await prisma.evaluacion.create({
+        data: {
+          codigoCurso,
+          nombre: evaluacion.nombre,
+          peso: evaluacion.peso.toFixed(2),
+          orden: indice + 1,
+        },
+      });
+      creadas.set(evaluacion.nombre, { id: creada.id, peso: evaluacion.peso });
+    }
+
+    for (const nota of notasPorCurso[codigoCurso] ?? []) {
+      await prisma.nota.create({
+        data: {
+          idEvaluacion: creadas.get(nota.evaluacion)!.id,
+          ciEstudiante: estudiantes[nota.estudiante].ci,
+          valor: nota.valor,
+        },
+      });
+    }
+
+    const notaMinima = Number(
+      cursos.find((curso) => curso.codigo === codigoCurso)?.notaMinimaAprobacion ?? "70.00",
+    );
+    const totalSesiones = await prisma.sesion.count({ where: { codigoCurso } });
+    const inscritos = await prisma.inscripcion.findMany({
+      where: { codigoCurso, estado: "INSCRITO" },
+      select: { ciEstudiante: true },
+    });
+
+    // Certificado pendiente con el promedio calculado, igual que en la aplicación.
+    for (const inscrito of inscritos) {
+      const notasEstudiante = await prisma.nota.findMany({
+        where: { ciEstudiante: inscrito.ciEstudiante, evaluacion: { codigoCurso } },
+        select: { idEvaluacion: true, valor: true },
+      });
+      const porEvaluacion = new Map(
+        notasEstudiante.map((fila) => [fila.idEvaluacion, Number(fila.valor)]),
+      );
+
+      let sumaPonderada = 0;
+      let sumaPesos = 0;
+      for (const evaluacion of creadas.values()) {
+        const valor = porEvaluacion.get(evaluacion.id);
+        if (valor === undefined) continue;
+        sumaPonderada += valor * evaluacion.peso;
+        sumaPesos += evaluacion.peso;
+      }
+      // Sin ninguna nota cargada no se crea certificado (queda "pendiente de nota").
+      if (sumaPesos === 0) continue;
+
+      const promedio = Math.round((sumaPonderada / sumaPesos) * 100) / 100;
+
+      const asistencias = await prisma.asistencia.groupBy({
+        by: ["estado"],
+        _count: { _all: true },
+        where: { ciEstudiante: inscrito.ciEstudiante, sesion: { codigoCurso } },
+      });
+      const porEstado = new Map(asistencias.map((fila) => [fila.estado, fila._count._all]));
+      const asistentes = (porEstado.get("PRESENTE") ?? 0) + (porEstado.get("JUSTIFICADA") ?? 0);
+      const pctAsistencia =
+        totalSesiones > 0 ? Math.round((asistentes / totalSesiones) * 10000) / 100 : 0;
+      const habilitado = totalSesiones - asistentes <= 3;
+
+      contadorCertificado += 1;
+      await prisma.certificado.create({
+        data: {
+          codigoVerificacion: `CERT-${new Date().getFullYear()}-N${String(contadorCertificado).padStart(4, "0")}`,
+          ciEstudiante: inscrito.ciEstudiante,
+          codigoCurso,
+          fechaEmision: soloFecha(HOY),
+          tipo: !habilitado
+            ? "PENDIENTE"
+            : promedio >= notaMinima
+              ? "APROBADO"
+              : "ASISTENCIA",
+          notaFinal: promedio.toFixed(2),
+          pctAsistencia: pctAsistencia.toFixed(2),
+        },
+      });
+    }
+  }
+
   const resumen = {
     roles: await prisma.rol.count(),
     usuarios: await prisma.usuario.count(),
@@ -557,6 +701,8 @@ async function main() {
     inscripciones: await prisma.inscripcion.count(),
     pagos: await prisma.pago.count(),
     asistencias: await prisma.asistencia.count(),
+    evaluaciones: await prisma.evaluacion.count(),
+    notas: await prisma.nota.count(),
     certificados: await prisma.certificado.count(),
   };
 

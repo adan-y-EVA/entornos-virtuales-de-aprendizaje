@@ -105,6 +105,51 @@ export function ProgressCard({ curso }: { curso: ProgresoCurso }) {
         </p>
       )}
 
+      {/* Notas por evaluación y promedio */}
+      {curso.evaluaciones.length > 0 && (
+        <div className="border-t border-card-border pt-3">
+          <p className="text-xs font-semibold text-text-main mb-2">Notas</p>
+          <ul className="space-y-1.5">
+            {curso.evaluaciones.map((evaluacion) => (
+              <li
+                key={evaluacion.nombre}
+                className="flex justify-between items-center text-xs font-secondary"
+              >
+                <span className="text-text-muted">
+                  {evaluacion.nombre}
+                  <span className="text-[10px]"> ({evaluacion.peso}%)</span>
+                </span>
+                <span
+                  className={`font-bold ${
+                    evaluacion.nota === null
+                      ? 'text-text-muted italic font-normal'
+                      : evaluacion.nota >= curso.notaMinima
+                        ? 'text-green-700'
+                        : 'text-red-700'
+                  }`}
+                >
+                  {evaluacion.nota ?? '—'}
+                </span>
+              </li>
+            ))}
+          </ul>
+          <div className="flex justify-between items-center mt-2 pt-2 border-t border-card-border">
+            <span className="text-xs font-semibold text-text-main">Promedio</span>
+            <span
+              className={`text-sm font-bold ${
+                curso.notaFinal === null
+                  ? 'text-text-muted'
+                  : curso.notaFinal >= curso.notaMinima
+                    ? 'text-green-700'
+                    : 'text-red-700'
+              }`}
+            >
+              {curso.notaFinal ?? '—'}
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Pie: fechas, nota, código */}
       <div className="border-t border-card-border pt-3 flex justify-between items-end gap-2">
         <div className="text-text-muted text-xs space-y-1">
@@ -113,7 +158,11 @@ export function ProgressCard({ curso }: { curso: ProgresoCurso }) {
           </p>
           <p className="flex items-center gap-1.5">
             <GraduationCap size={12} />
-            {curso.notaFinal !== null ? `Nota final: ${curso.notaFinal}` : 'Nota: pendiente'}
+            {curso.evaluaciones.length > 0
+              ? `Promedio final: ${curso.notaFinal ?? 'pendiente'}`
+              : curso.notaFinal !== null
+                ? `Nota final: ${curso.notaFinal}`
+                : 'Nota: pendiente'}
           </p>
         </div>
         {curso.codigoVerificacion && (
